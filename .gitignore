@@ -17,3 +17,5 @@ pom.xml.versionsBackup
 **/.settings
 **/*.class
 .metadata/*
+/Server/.idea/
+/.cursor/
