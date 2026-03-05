@@ -5,7 +5,7 @@ The OpenAS2 application enables you to transmit and receive AS2 messages with ED
 The application supports Java 11 and up.
 
 ## **lev-justinb Fork Changes**
-This fork allows you to send files immediately by using an [added REST API endpoint](##-rest-admin-api-poll-trigger) that polls on demand
+This fork allows you to send files immediately by using an [added REST API endpoint](##rest-admin-api-poll-trigger) that polls on demand
 
 ## Development
 There is a pom.xml in the Server folder to compile and create the jar and build the distribution package using Maven.
