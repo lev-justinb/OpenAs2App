@@ -221,4 +221,13 @@ public class RestApiTest {
         String buffer = this.doPost("partner/delete", true, params);
         assertThat("Delete partnership via API ", buffer.replaceAll("[\\n\\r]+",  ":"), matchesPattern(".*\"type\"[ ]*:[ ]*\"OK\".*\"Stored partnerships\".*"));
     }
+
+    @Test
+    public void shouldRespondWith_J_PollTrigger() throws Exception {
+        List<NameValuePair> params = new ArrayList<NameValuePair>();
+        String buffer = this.doPost("poll/trigger", true, params);
+        String normalized = buffer.replaceAll("[\\n\\r]+",  ":");
+        assertThat("Trigger poll via API ", normalized, containsString("\"type\" : \"OK\""));
+        assertThat("Trigger poll via API message ", normalized, containsString("Poll completed for"));
+    }
 }

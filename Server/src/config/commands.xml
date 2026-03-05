@@ -34,5 +34,8 @@
 		<command classname="org.openas2.app.message.ViewMessageCommand"/>
 		<command classname="org.openas2.app.message.GetDataForCharts"/>
 	</multicommand>
-	
+	<multicommand name="poll"
+		description="Poll commands">
+		<command classname="org.openas2.app.poll.TriggerPollCommand"/>
+	</multicommand>
 </commands>

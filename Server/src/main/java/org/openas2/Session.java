@@ -4,6 +4,7 @@ import org.openas2.message.MessageFactory;
 import org.openas2.cert.CertificateFactory;
 import org.openas2.partner.PartnershipFactory;
 import org.openas2.processor.Processor;
+import org.openas2.processor.receiver.PollingModule;
 import org.w3c.dom.Node;
 
 import java.util.Map;
@@ -118,5 +119,7 @@ public interface Session {
     String getAppVersion();
 
     String getAppTitle();
+
+    java.util.List<PollingModule> getOutboundPollingModules() throws OpenAS2Exception;
 
 }

@@ -9,6 +9,7 @@ import org.openas2.partner.PartnershipFactory;
 import org.openas2.processor.Processor;
 import org.openas2.processor.ProcessorModule;
 import org.openas2.processor.receiver.DirectoryPollingModule;
+import org.openas2.processor.receiver.PollingModule;
 import org.openas2.util.Properties;
 import org.openas2.util.XMLUtil;
 import org.w3c.dom.Node;
@@ -207,6 +208,35 @@ public abstract class BaseSession implements Session {
             }
         }
         return null;
+    }
+
+    public List<PollingModule> getOutboundPollingModules() throws OpenAS2Exception {
+        List<PollingModule> pollers = new ArrayList<PollingModule>();
+
+        // Partnership-based pollers
+        for (Map.Entry<String, Map<String, Object>> entry : polledDirectories.entrySet()) {
+            Map<String, Object> meta = entry.getValue();
+            Object pollerInstance = meta.get("pollerInstance");
+            if (pollerInstance instanceof PollingModule) {
+                PollingModule poller = (PollingModule) pollerInstance;
+                if (!pollers.contains(poller)) {
+                    pollers.add(poller);
+                }
+            }
+        }
+
+        // Processor modules that are polling modules
+        Processor processor = getProcessor();
+        for (ProcessorModule module : processor.getModules()) {
+            if (module instanceof PollingModule) {
+                PollingModule poller = (PollingModule) module;
+                if (!pollers.contains(poller)) {
+                    pollers.add(poller);
+                }
+            }
+        }
+
+        return pollers;
     }
 
     public void loadPartnershipPoller(Node moduleNode, String partnershipName, String configSource) throws OpenAS2Exception {

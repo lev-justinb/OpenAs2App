@@ -26,7 +26,7 @@
 
 2. **Response**
 
-   - Success: HTTP 200, body e.g. `{"type":"OK","results":["Poll completed for N poller(s)."]}`.
+   - Success: HTTP 200, body e.g. `{"type":"OK","results":["Poll completed for N poller(s).", "No files sent."]}` or, when files were sent, additional lines in `results` listing the names of files sent per outbox.
    - Failure: HTTP 200 with `"type":"ERROR"` and message in `results`, or 5xx on server error.
 
 3. **Effect**

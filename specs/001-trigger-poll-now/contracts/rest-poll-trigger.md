@@ -16,7 +16,7 @@
   - **Status**: `200 OK` (success) or `5xx` / exception (e.g. server error).
   - **Body**: JSON-serialized `CommandResult` (consistent with other commands):
     - **type**: `"OK"` or `"ERROR"`.
-    - **results**: List of strings (e.g. one entry like `"Poll completed"` or `"Poll completed for N poller(s)"`; on error, message describing failure).
+    - **results**: List of strings. On success: first entry is a summary (e.g. `"Poll completed for N poller(s)."`). If any poller sent files, subsequent entries list files sent per outbox, e.g. `"Outbox /path/to/outbox: sent file1.edi, file2.edi"`. If no files were sent, a second entry may be `"No files sent."`. On error, a single message describing the failure.
   - **Content-Type**: `application/json`.
 
 ### Example (success)
@@ -35,7 +35,19 @@ Content-Type: application/x-www-form-urlencoded
 ```json
 {
   "type": "OK",
-  "results": ["Poll completed for 2 poller(s)."]
+  "results": ["Poll completed for 2 poller(s).", "No files sent."]
+}
+```
+
+When one or more pollers send files, the response may include per-outbox file lists:
+
+```json
+{
+  "type": "OK",
+  "results": [
+    "Poll completed for 1 poller(s).",
+    "Outbox /path/to/outbox: sent file1.edi, file2.edi"
+  ]
 }
 ```
 

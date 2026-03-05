@@ -5,12 +5,14 @@ import java.util.Iterator;
 import java.util.List;
 
 public class CommandResult {
+
     public static final String TYPE_OK = "OK";
     public static final String TYPE_ERROR = "ERROR";
     public static final String TYPE_WARNING = "WARNING";
     public static final String TYPE_INVALID_PARAM_COUNT = "INVALID PARAMETER COUNT";
     public static final String TYPE_COMMAND_NOT_SUPPORTED = "COMMAND NOT SUPPORTED";
     public static final String TYPE_EXCEPTION = "EXCEPTION";
+    public static final String TYPE_SENT = "SENT";
     private String type;
     private List<Object> results;
 
@@ -57,7 +59,6 @@ public class CommandResult {
         results = list;
     }
 
-
     public String getType() {
         return type;
     }
@@ -86,5 +87,4 @@ public class CommandResult {
     public void setType(String string) {
         type = string;
     }
-
 }

@@ -28,7 +28,7 @@ description: "Task list for On-Demand Poll Trigger feature"
 
 **Purpose**: Prepare package and structure for the new poll command.
 
-- [ ] T001 Create package directory for poll commands at Server/src/main/java/org/openas2/app/poll/
+- [X] T001 Create package directory for poll commands at Server/src/main/java/org/openas2/app/poll/
 
 ---
 
@@ -38,9 +38,9 @@ description: "Task list for On-Demand Poll Trigger feature"
 
 **⚠️ CRITICAL**: User story implementation depends on this phase.
 
-- [ ] T002 Add `triggerPollNow()` to PollingModule in Server/src/main/java/org/openas2/processor/receiver/PollingModule.java: run poll immediately, cancel current timer, reschedule next run one full interval from now; use existing busy guard (if poll already running, only reschedule timer; otherwise run poll then reschedule).
+- [X] T002 Add `triggerPollNow()` to PollingModule in Server/src/main/java/org/openas2/processor/receiver/PollingModule.java: run poll immediately, cancel current timer, reschedule next run one full interval from now; use existing busy guard (if poll already running, only reschedule timer; otherwise run poll then reschedule).
 
-- [ ] T003 Add a method to return all outbound polling modules: in BaseSession (and Session interface if needed) add a method that returns a list of PollingModule instances from (1) partnership pollers in getPolledDirectories() (each entry’s pollerInstance), (2) processor.getModules() filtered by PollingModule.class.isAssignableFrom. Implement in Server/src/main/java/org/openas2/BaseSession.java (and org/openas2/Session.java if Session is an interface).
+- [X] T003 Add a method to return all outbound polling modules: in BaseSession (and Session interface if needed) add a method that returns a list of PollingModule instances from (1) partnership pollers in getPolledDirectories() (each entry’s pollerInstance), (2) processor.getModules() filtered by PollingModule.class.isAssignableFrom. Implement in Server/src/main/java/org/openas2/BaseSession.java (and org/openas2/Session.java if Session is an interface).
 
 **Checkpoint**: Foundation ready — TriggerPollCommand can call triggerPollNow() and obtain all pollers.
 
@@ -54,11 +54,11 @@ description: "Task list for On-Demand Poll Trigger feature"
 
 ### Implementation for User Story 1
 
-- [ ] T004 [US1] Implement TriggerPollCommand in Server/src/main/java/org/openas2/app/poll/TriggerPollCommand.java: implement Command (getName() "trigger"), obtain Session from processor, get all outbound pollers via session helper, call triggerPollNow() on each, return CommandResult TYPE_OK with results containing a message like "Poll completed for N poller(s).".
+- [X] T004 [US1] Implement TriggerPollCommand in Server/src/main/java/org/openas2/app/poll/TriggerPollCommand.java: implement Command (getName() "trigger"), obtain Session from processor, get all outbound pollers via session helper, call triggerPollNow() on each, return CommandResult TYPE_OK with results containing a message like "Poll completed for N poller(s).".
 
-- [ ] T005 [US1] Register the poll command in Server/src/config/commands.xml: add a multicommand with name "poll" and description for poll trigger, containing the command class org.openas2.app.poll.TriggerPollCommand.
+- [X] T005 [US1] Register the poll command in Server/src/config/commands.xml: add a multicommand with name "poll" and description for poll trigger, containing the command class org.openas2.app.poll.TriggerPollCommand.
 
-- [ ] T006 [US1] Add logging for on-demand trigger: in TriggerPollCommand and/or PollingModule.triggerPollNow() log trigger invocation and outcome (e.g. number of pollers triggered, errors) per constitution observability, without logging full payloads.
+- [X] T006 [US1] Add logging for on-demand trigger: in TriggerPollCommand and/or PollingModule.triggerPollNow() log trigger invocation and outcome (e.g. number of pollers triggered, errors) per constitution observability, without logging full payloads.
 
 **Checkpoint**: User Story 1 is done when POST /api/poll/trigger runs all pollers and resets their timers; no server restart required.
 
@@ -72,9 +72,9 @@ description: "Task list for On-Demand Poll Trigger feature"
 
 ### Implementation for User Story 2
 
-- [ ] T007 [US2] In TriggerPollCommand, handle exceptions and failure cases: catch exceptions when gathering pollers or calling triggerPollNow(), return CommandResult TYPE_ERROR with a brief message in results (e.g. "Poll failed: &lt;reason&gt;") per specs/001-trigger-poll-now/contracts/rest-poll-trigger.md.
+- [X] T007 [US2] In TriggerPollCommand, handle exceptions and failure cases: catch exceptions when gathering pollers or calling triggerPollNow(), return CommandResult TYPE_ERROR with a brief message in results (e.g. "Poll failed: &lt;reason&gt;") per specs/001-trigger-poll-now/contracts/rest-poll-trigger.md.
 
-- [ ] T008 [US2] Ensure response shape matches contract: CommandResult with type "OK" or "ERROR" and results list; when no pollers are configured, return OK with message indicating 0 pollers (or document as acceptable). Verify in Server/src/main/java/org/openas2/app/poll/TriggerPollCommand.java.
+- [X] T008 [US2] Ensure response shape matches contract: CommandResult with type "OK" or "ERROR" and results list; when no pollers are configured, return OK with message indicating 0 pollers (or document as acceptable). Verify in Server/src/main/java/org/openas2/app/poll/TriggerPollCommand.java.
 
 **Checkpoint**: User Story 2 is done when success and failure responses are clearly distinguishable from the response body.
 
@@ -84,13 +84,13 @@ description: "Task list for On-Demand Poll Trigger feature"
 
 **Purpose**: Tests and documentation required by constitution and quickstart.
 
-- [ ] T009 [P] Add unit test for TriggerPollCommand in Server/src/test/java/org/openas2/app/poll/TriggerPollCommandTest.java: test execute() with mocked session/processor and pollers, verify CommandResult type and message, and error path when session or poll throws.
+- [X] T009 [P] Add unit test for TriggerPollCommand in Server/src/test/java/org/openas2/app/poll/TriggerPollCommandTest.java: test execute() with mocked session/processor and pollers, verify CommandResult type and message, and error path when session or poll throws.
 
-- [ ] T010 [P] Add integration or REST test for POST /api/poll/trigger in Server/src/test/java (e.g. alongside existing RestApiTest pattern): authenticate, call endpoint, assert 200 and response body has type and results; optionally assert 401 without auth.
+- [X] T010 [P] Add integration or REST test for POST /api/poll/trigger in Server/src/test/java (e.g. alongside existing RestApiTest pattern): authenticate, call endpoint, assert 200 and response body has type and results; optionally assert 401 without auth.
 
 - [ ] T011 Run quickstart validation from specs/001-trigger-poll-now/quickstart.md: trigger endpoint with curl (or equivalent), confirm response and that poll runs.
 
-- [ ] T012 [P] Update documentation: if the project documents REST admin endpoints (README, docs folder), add the trigger endpoint (POST /api/poll/trigger, auth, response shape) per specs/001-trigger-poll-now/contracts/rest-poll-trigger.md.
+- [X] T012 [P] Update documentation: if the project documents REST admin endpoints (README, docs folder), add the trigger endpoint (POST /api/poll/trigger, auth, response shape) per specs/001-trigger-poll-now/contracts/rest-poll-trigger.md.
 
 ---
 

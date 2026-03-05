@@ -4,6 +4,8 @@
 The OpenAS2 application enables you to transmit and receive AS2 messages with EDI-X12, EDIFACT, XML, or binary payloads between trading partners.
 The application supports Java 11 and up.
 
+## **lev-justinb Fork Changes**
+This fork allows you to send files immediately by using an [added REST API endpoint](##-rest-admin-api-poll-trigger) that polls on demand
 
 ## Development
 There is a pom.xml in the Server folder to compile and create the jar and build the distribution package using Maven.
@@ -44,6 +46,27 @@ To deploy the released artifacts requires user ID and password for Sonatype. See
 ## Web UI for configuration
 IMPORTANT: You need Java 11 or newer
 Follow the instructions in the WebUI/README.md file for configuring and using it.
+
+## REST admin API poll trigger
+
+When the REST admin API is enabled (`restapi.command.processor.enabled=true` and `restapi.command.processor.baseuri` set in `config.xml` or `openas2.properties`), you can trigger an immediate poll of all outbound directory pollers via:
+
+Bash:
+```bash
+curl -X POST -u "userID:pWd" "http://localhost:8080/api/poll/trigger"
+```
+
+Powershell:
+```ps
+curl.exe -X POST -u "userID:pWd" "http://localhost:8080/api/poll/trigger"
+```
+
+The response is a JSON `CommandResult` with a `type` field:
+-  `SENT` : One or more files were sent (file names are specified in message)
+-  `OK` : Directories polled, no files were sent
+-  `ERROR` : There was a problem polling the directories
+
+and a short message such as "Poll completed for N poller(s)."
 
 
 ## How to create the docker image
@@ -145,7 +168,7 @@ $ docker compose logs openas2_webui
 
 ## Dynamically configure your container using environment variables
 
-Here is a short explanation how to override properties in the container's `config.xml` file using environment variables. 
+Here is a short explanation how to override properties in the container's `config.xml` file using environment variables.
 
 **Prerequisites:**
 
@@ -154,7 +177,7 @@ Here is a short explanation how to override properties in the container's `confi
 **Process:**
 
 1. **Start the container**: Start the container using your preferred method (e.g., Docker run command).
-2. **Environment variables take precedence**: The script running within the container (assumed to be `start-container.sh`) checks for the existence of `config.xml` in the `$OPENAS2_BASE/config` directory. 
+2. **Environment variables take precedence**: The script running within the container (assumed to be `start-container.sh`) checks for the existence of `config.xml` in the `$OPENAS2_BASE/config` directory.
 3. **Missing `config.xml`**: If `config.xml` is missing, the script:
    - Copies the contents of the `config_template` directory into the `config` directory.
 4. **Missing `OPENAS2_PROPERTIES_FILE`**: If the `OPENAS2_PROPERTIES_FILE` is not found:
@@ -172,8 +195,8 @@ Here is a short explanation how to override properties in the container's `confi
 
 **Notes:**
 
-* This script provides a way to . 
+* This script provides a way to .
 * Ensure the environment variables have appropriate access permissions and values within your container environment.
-* The script uses color-coded output (if the terminal supports it) to differentiate between warnings and successful operations. 
+* The script uses color-coded output (if the terminal supports it) to differentiate between warnings and successful operations.
 * You can customize the color definitions or remove the colorization logic if not needed.
 * Remember to adjust the script path and variable names based on your specific container setup.

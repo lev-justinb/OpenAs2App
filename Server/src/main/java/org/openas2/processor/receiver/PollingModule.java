@@ -4,6 +4,8 @@ import org.openas2.OpenAS2Exception;
 import org.openas2.Session;
 import org.openas2.params.InvalidParameterException;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -44,6 +46,36 @@ public abstract class PollingModule extends MessageBuilderModule {
             timer.cancel();
             timer = null;
         }
+    }
+
+    public synchronized void triggerPollNow() throws OpenAS2Exception {
+        try {
+            if (!isBusy()) {
+                setBusy(true);
+                try {
+                    poll();
+                    poll();
+                } finally {
+                    setBusy(false);
+                }
+            }
+
+            int intervalSeconds = getInterval();
+
+            if (timer != null) {
+                timer.cancel();
+            }
+
+            timer = new Timer(getName(), false);
+            long intervalMillis = intervalSeconds * 1000L;
+            timer.scheduleAtFixedRate(new PollTask(), intervalMillis, intervalMillis);
+        } catch (InvalidParameterException e) {
+            throw new OpenAS2Exception("Failed to trigger poll due to invalid interval configuration", e);
+        }
+    }
+
+    public List<String> getLastPollSentFileNames() {
+        return Collections.emptyList();
     }
 
     private boolean isBusy() {

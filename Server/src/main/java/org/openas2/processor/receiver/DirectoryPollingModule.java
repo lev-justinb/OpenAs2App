@@ -40,6 +40,7 @@ public abstract class DirectoryPollingModule extends PollingModule {
     private Map<String, Long> processingFiles = new HashMap<String, Long>(); 
     // Files that have been processed in thread mode and need removing from the tracked files maps by the main thread
     Collection<String> threadProcessedFiles = Collections.synchronizedCollection(new ArrayList<String>());
+    private final List<String> lastPollSentFileNames = Collections.synchronizedList(new ArrayList<String>());
 
     private String errorDir = null;
     private String sentDir = null;
@@ -117,6 +118,7 @@ public abstract class DirectoryPollingModule extends PollingModule {
     }
 
     public void poll() {
+        lastPollSentFileNames.clear();
         try {
             // update tracking info. if a file is ready, process it
             updateTracking();
@@ -307,10 +309,18 @@ public abstract class DirectoryPollingModule extends PollingModule {
 
         try {
             processDocument(file, file.getName());
+            lastPollSentFileNames.add(file.getName());
         } catch (FileNotFoundException e) {
             // Try to move original file to error dir in case error handling has not done it  for us.
             IOUtil.handleArchive(file, errorDir, false);
             throw new OpenAS2Exception("Failed to initiate processing for file:" + file.getAbsolutePath(), e);
         }
     }
- }
+
+    @Override
+    public List<String> getLastPollSentFileNames() {
+        synchronized (lastPollSentFileNames) {
+            return new ArrayList<>(lastPollSentFileNames);
+        }
+    }
+}
