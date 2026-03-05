@@ -1,6 +1,5 @@
 @echo off
 rem Purpose:  runs the OpenAS2 application
-
 REM Set the base directory to the folder this file is located in
 SET tmppath=%~dp0
 pushd %tmppath%
@@ -18,7 +17,6 @@ rem set EXTRA_PARMS=%EXTRA_PARMS% -Dsun.net.http.allowRestrictedHeaders=true
 
 rem When using old (unsecure) certificates (please replace them!) that fail to load from the certificate store.
 rem set EXTRA_PARMS=%EXTRA_PARMS% -Dorg.bouncycastle.asn1.allow_unsafe_integer=true
-
 if DEFINED OPENAS2_CONFIG_FILE goto skip_config_file_set
 set OPENAS2_CONFIG_FILE=%OPENAS2_BASE_DIR%/config/config.xml
 :skip_config_file_set
@@ -32,7 +30,7 @@ rem set EXTRA_PARMS=%EXTRA_PARMS% -Dhttps.protocols=TLSv1.2
 if NOT [%OPENAS2_LOGGING_BASE%]==[] goto skip_logging_base_set
 set OPENAS2_LOGGING_BASE=%OPENAS2_BASE_DIR%\logs
 :skip_logging_base_set
-set EXTRA_PARMS=%EXTRA_PARMS% DOPENAS2_LOG_DIR="%OPENAS2_LOGGING_BASE%"
+set EXTRA_PARMS=%EXTRA_PARMS% -DOPENAS2_LOG_DIR="%OPENAS2_LOGGING_BASE%"
 
 rem Uncomment any of the following for enhanced debug
 rem set EXTRA_PARMS=%EXTRA_PARMS% -Dmaillogger.debug.enabled=true

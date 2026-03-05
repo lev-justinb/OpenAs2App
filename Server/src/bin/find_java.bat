@@ -27,7 +27,6 @@ for /F delims^=^ eol^= %%i in ('where java.exe') do (
   set java_folder=!bin_folder:~0,-5!
   call set java_list[%%found_count%%]="%%java_folder%%"
 )
-endLocal
 
 if %found_count% GTR 1 (
   echo.
@@ -37,7 +36,7 @@ if %found_count% GTR 1 (
   )
   echo.
   echo Set JAVA_HOME to one of the above.
-  exit /B 1
+  endlocal & exit /B 1
 )
 if %found_count% EQU 0 goto JavaNotFound
 echo Java install found: %java_list[1]%
@@ -47,10 +46,10 @@ set JAVA_HOME=%JAVA_HOME:"=%
 set JAVA=%JAVA_HOME%\bin\java
 echo Set JAVA to: %JAVA%
 echo Set JAVA_HOME to: %JAVA_HOME%
-exit /B 0
+endlocal & set "JAVA_HOME=%JAVA_HOME%" & set "JAVA=%JAVA%" & exit /B 0
 
 :JavaNotFound
 echo No Java install found in %JavaBaseInstallFolder%
 echo If you are using a 32-bit system you may want to change %ProgramFiles% to "%ProgramFiles(x86)%" and try again.
 echo If you have installed Java in a non-standard location then set the JAVA_HOME environment variable before running this script.
-exit /B 2
+endlocal & exit /B 2
