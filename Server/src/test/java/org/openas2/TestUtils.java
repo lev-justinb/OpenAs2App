@@ -66,6 +66,12 @@ public class TestUtils {
             } else if (files.length > fileCount) {
                     return files.length;
             }
+            try {
+                Thread.sleep(500);  // Avoid busy-wait, check ~2x/sec
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
         }
         return dir.listFiles().length;
     }
