@@ -5,7 +5,7 @@ The OpenAS2 application enables you to transmit and receive AS2 messages with ED
 The application supports Java 11 and up.
 
 ## **lev-justinb Fork Changes**
-This fork allows you to send files immediately by using an [added REST API endpoint](#rest-admin-api-poll-trigger) that polls on demand
+This fork has two major changes. The lev-justinb fork lets you to send files immediately by using an [added REST API endpoint](#rest-admin-api-poll-trigger) that polls on demand. It also allows you to [launch an application or command line tool when a file is successfully received](#tool-launcher-on-file-receive)
 
 ## Development
 There is a pom.xml in the Server folder to compile and create the jar and build the distribution package using Maven.
@@ -68,6 +68,23 @@ The response is a JSON `CommandResult` with a `type` field:
 
 and a short message such as "Poll completed for N poller(s)."
 
+## Tool launcher on file receive
+
+When enabled, the server can launch an external CLI/EXE after each AS2 file is successfully received and stored. The feature is **disabled by default**.
+
+**Enable the tool launcher:**
+
+1. Add to `config.xml` (in the `<properties>` block) or `openas2.properties`:
+   ```xml
+   module.ToolLauncherModule.enabled="true"
+   module.ToolLauncherModule.command="C:/path/to/your-tool.exe"
+   ```
+
+2. Ensure the ToolLauncherModule is in the processor (after MessageFileModule) in `config.xml`.
+
+3. Restart the server.
+
+Note: the tool is launched with the absolute path to the received file passed as an argument
 
 ## How to create the docker image
 
