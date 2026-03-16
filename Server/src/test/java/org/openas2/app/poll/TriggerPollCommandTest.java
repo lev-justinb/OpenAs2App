@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.openas2.OpenAS2Exception;
 import org.openas2.Session;
@@ -23,6 +24,8 @@ public class TriggerPollCommandTest {
         Session session = mock(Session.class);
         PollingModule poller1 = mock(PollingModule.class);
         PollingModule poller2 = mock(PollingModule.class);
+        when(poller1.getOutboxDir()).thenReturn("/path/to/outbox1");
+        when(poller2.getOutboxDir()).thenReturn("/path/to/outbox2");
         List<PollingModule> pollers = Arrays.asList(poller1, poller2);
         when(session.getOutboundPollingModules()).thenReturn(pollers);
 
@@ -34,6 +37,22 @@ public class TriggerPollCommandTest {
         assertEquals(CommandResult.TYPE_OK, result.getType());
         String message = result.getResult();
         assertTrue(message.contains("Poll completed for 2 poller(s)."));
+
+        List<Object> results = result.getResults();
+        assertTrue(results.size() >= 3);
+        Object lastResult = results.get(results.size() - 1);
+        assertTrue(lastResult instanceof Map);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> pollWrapper = (Map<String, Object>) lastResult;
+        assertTrue(pollWrapper.containsKey("poll"));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> poll = (Map<String, Object>) pollWrapper.get("poll");
+        assertTrue(poll.containsKey("outboxesChecked"));
+        assertTrue(poll.containsKey("allFiles"));
+        assertTrue(poll.containsKey("sentByOutbox"));
+        assertEquals(2, ((List<?>) poll.get("outboxesChecked")).size());
+        assertTrue(((List<?>) poll.get("allFiles")).isEmpty());
+        assertTrue(((List<?>) poll.get("sentByOutbox")).isEmpty());
     }
 
     @Test
@@ -69,6 +88,7 @@ public class TriggerPollCommandTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     public void executeIncludesSentFileNamesInResult() throws Exception {
         Session session = mock(Session.class);
         PollingModule poller = mock(PollingModule.class);
@@ -88,5 +108,23 @@ public class TriggerPollCommandTest {
         assertTrue(results.toString().contains("file2.edi"));
         assertTrue(results.toString().contains("Outbox outbox"));
         assertTrue(results.toString().contains("sent"));
+
+        Object lastResult = results.get(results.size() - 1);
+        assertTrue(lastResult instanceof Map);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> pollWrapper = (Map<String, Object>) lastResult;
+        @SuppressWarnings("unchecked")
+        Map<String, Object> poll = (Map<String, Object>) pollWrapper.get("poll");
+        List<String> outboxesChecked = (List<String>) poll.get("outboxesChecked");
+        assertEquals(1, outboxesChecked.size());
+        assertEquals("outbox", outboxesChecked.get(0));
+        List<String> allFiles = (List<String>) poll.get("allFiles");
+        assertEquals(2, allFiles.size());
+        assertTrue(allFiles.contains("file1.edi"));
+        assertTrue(allFiles.contains("file2.edi"));
+        List<Map<String, Object>> sentByOutbox = (List<Map<String, Object>>) poll.get("sentByOutbox");
+        assertEquals(1, sentByOutbox.size());
+        assertEquals("outbox", sentByOutbox.get(0).get("outbox"));
+        assertEquals(Arrays.asList("file1.edi", "file2.edi"), sentByOutbox.get(0).get("files"));
     }
 }

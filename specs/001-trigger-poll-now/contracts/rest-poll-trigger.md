@@ -15,8 +15,11 @@
 - **Response**:
   - **Status**: `200 OK` (success) or `5xx` / exception (e.g. server error).
   - **Body**: JSON-serialized `CommandResult` (consistent with other commands):
-    - **type**: `"OK"` or `"ERROR"`.
-    - **results**: List of strings. On success: first entry is a summary (e.g. `"Poll completed for N poller(s)."`). If any poller sent files, subsequent entries list files sent per outbox, e.g. `"Outbox /path/to/outbox: sent file1.edi, file2.edi"`. If no files were sent, a second entry may be `"No files sent."`. On error, a single message describing the failure.
+    - **type**: `"OK"`, `"SENT"`, or `"ERROR"`.
+    - **results**: On success: first entry is a summary (e.g. `"Poll completed for N poller(s)."`). If no files were sent, a second entry is `"No files sent."`. If any poller sent files, subsequent entries list files sent per outbox, e.g. `"Outbox outboxId: sent file1.edi, file2.edi"`. The final entry is a structured object `{"poll": {...}}` for applications to consume:
+      - **poll.outboxesChecked**: List of outbox identifiers (directory name or module name) for all pollers that were triggered.
+      - **poll.allFiles**: Flat list of all file names sent (easy to grab).
+      - **poll.sentByOutbox**: Per-outbox details. Each entry has `outbox`, `files`, and optionally `sender` (our AS2 ID) and `receiver` (partner AS2 ID) when available.
   - **Content-Type**: `application/json`.
 
 ### Example (success)
@@ -35,18 +38,42 @@ Content-Type: application/x-www-form-urlencoded
 ```json
 {
   "type": "OK",
-  "results": ["Poll completed for 2 poller(s).", "No files sent."]
+  "results": [
+    "Poll completed for 2 poller(s).",
+    "No files sent.",
+    {
+      "poll": {
+        "outboxesChecked": ["toPartnerA", "toPartnerB"],
+        "allFiles": [],
+        "sentByOutbox": []
+      }
+    }
+  ]
 }
 ```
 
-When one or more pollers send files, the response may include per-outbox file lists:
+When one or more pollers send files, the response includes per-outbox file lists and structured data:
 
 ```json
 {
-  "type": "OK",
+  "type": "SENT",
   "results": [
     "Poll completed for 1 poller(s).",
-    "Outbox /path/to/outbox: sent file1.edi, file2.edi"
+    "Outbox toPartnerA: sent file1.edi, file2.edi",
+    {
+      "poll": {
+        "outboxesChecked": ["toPartnerA"],
+        "allFiles": ["file1.edi", "file2.edi"],
+        "sentByOutbox": [
+          {
+            "outbox": "toPartnerA",
+            "sender": "MyCompany",
+            "receiver": "PartnerA",
+            "files": ["file1.edi", "file2.edi"]
+          }
+        ]
+      }
+    }
   ]
 }
 ```
@@ -64,5 +91,5 @@ When one or more pollers send files, the response may include per-outbox file li
 
 ## Compatibility
 
-- Uses existing `CommandResult` and `ApiResource` serialization; no new response schema.
+- Uses existing `CommandResult` and `ApiResource` serialization. The poll trigger extends the response with a structured `poll` object in `results` for application consumption (consistent with other commands that place Maps in results, e.g. cert view).
 - Unauthorized callers receive the same 401/403 behavior as other admin endpoints.
