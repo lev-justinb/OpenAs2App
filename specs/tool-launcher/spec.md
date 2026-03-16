@@ -1,6 +1,6 @@
 # Feature Specification: Tool Launcher on File Receive
 
-**Feature Branch**: `361-tool-launcher`  
+**Feature Branch**: `tool-launcher`  
 **Created**: 2026-03-12  
 **Status**: Draft  
 **Input**: User description: "I want to add a tool launcher feature that starts an external cli/exe when a file is successfully received. this feature should be able to be enabled (disabled by default) with the ability to specify the cli/exe in the config"

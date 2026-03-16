@@ -1,7 +1,7 @@
 # Implementation Plan: Tool Launcher on File Receive
 
-**Branch**: `361-tool-launcher` | **Date**: 2026-03-12 | **Spec**: [spec.md](./spec.md)  
-**Input**: Feature specification from `specs/361-tool-launcher/spec.md`
+**Branch**: `tool-launcher` | **Date**: 2026-03-12 | **Spec**: [spec.md](./spec.md)  
+**Input**: Feature specification from `specs/tool-launcher/spec.md`
 
 ## Summary
 

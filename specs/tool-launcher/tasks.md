@@ -1,6 +1,6 @@
 # Tasks: Tool Launcher on File Receive
 
-**Input**: Design documents from `specs/361-tool-launcher/`  
+**Input**: Design documents from `specs/tool-launcher/`  
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing.

@@ -1,6 +1,6 @@
 # Quickstart: Tool Launcher on File Receive
 
-**Feature**: 361-tool-launcher  
+**Feature**: tool-launcher  
 **Date**: 2026-03-12
 
 ## Prerequisites

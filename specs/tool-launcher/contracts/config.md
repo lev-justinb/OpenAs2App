@@ -1,6 +1,6 @@
 # Config Contract: Tool Launcher Module
 
-**Feature**: 361-tool-launcher  
+**Feature**: tool-launcher  
 **Date**: 2026-03-12
 
 ## Overview
