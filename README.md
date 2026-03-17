@@ -74,17 +74,13 @@ When enabled, the server can launch an external CLI/EXE after each AS2 file is s
 
 **Enable the tool launcher:**
 
-1. Add to `config.xml` (in the `<properties>` block) or `openas2.properties`:
+Add to `config.xml` (in the `<properties>` block) or `openas2.properties`:
    ```xml
    module.ToolLauncherModule.enabled="true"
    module.ToolLauncherModule.command="C:/path/to/your-tool.exe"
    ```
 
-2. Ensure the ToolLauncherModule is in the processor (after MessageFileModule) in `config.xml`.
-
-3. Restart the server.
-
-Note: the tool is launched with the absolute path to the received file passed as an argument
+Note: When OpenAS2 launches the tool, it passes the file received (its absolute path) as an argument. So if you were to launch notepad, it would always open the file received
 
 ## How to create the docker image
 
