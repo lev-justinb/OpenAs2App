@@ -6,6 +6,7 @@ import org.openas2.OpenAS2Exception;
 import org.openas2.Session;
 import org.openas2.message.Message;
 import org.openas2.params.InvalidParameterException;
+import org.openas2.partner.Partnership;
 import org.openas2.processor.Processor;
 import org.openas2.util.IOUtil;
 
@@ -41,6 +42,7 @@ public abstract class DirectoryPollingModule extends PollingModule {
     // Files that have been processed in thread mode and need removing from the tracked files maps by the main thread
     Collection<String> threadProcessedFiles = Collections.synchronizedCollection(new ArrayList<String>());
     private final List<String> lastPollSentFileNames = Collections.synchronizedList(new ArrayList<String>());
+    private final List<Map<String, String>> lastPollSentDetails = Collections.synchronizedList(new ArrayList<Map<String, String>>());
 
     private String errorDir = null;
     private String sentDir = null;
@@ -119,6 +121,7 @@ public abstract class DirectoryPollingModule extends PollingModule {
 
     public void poll() {
         lastPollSentFileNames.clear();
+        lastPollSentDetails.clear();
         try {
             // update tracking info. if a file is ready, process it
             updateTracking();
@@ -308,8 +311,21 @@ public abstract class DirectoryPollingModule extends PollingModule {
         }
 
         try {
-            processDocument(file, file.getName());
+            Message msg = processDocument(file, file.getName());
             lastPollSentFileNames.add(file.getName());
+            if (msg != null && msg.getPartnership() != null) {
+                Map<String, String> detail = new HashMap<>();
+                detail.put("filename", file.getName());
+                String sender = msg.getPartnership().getSenderID(Partnership.PID_AS2);
+                String receiver = msg.getPartnership().getReceiverID(Partnership.PID_AS2);
+                if (sender != null) {
+                    detail.put("sender", sender);
+                }
+                if (receiver != null) {
+                    detail.put("receiver", receiver);
+                }
+                lastPollSentDetails.add(detail);
+            }
         } catch (FileNotFoundException e) {
             // Try to move original file to error dir in case error handling has not done it  for us.
             IOUtil.handleArchive(file, errorDir, false);
@@ -321,6 +337,16 @@ public abstract class DirectoryPollingModule extends PollingModule {
     public List<String> getLastPollSentFileNames() {
         synchronized (lastPollSentFileNames) {
             return new ArrayList<>(lastPollSentFileNames);
+        }
+    }
+
+    /**
+     * Returns details of files sent in the last poll, including sender and receiver AS2 IDs when available.
+     * Each entry contains "filename", and optionally "sender" and "receiver".
+     */
+    public List<Map<String, String>> getLastPollSentDetails() {
+        synchronized (lastPollSentDetails) {
+            return new ArrayList<>(lastPollSentDetails);
         }
     }
 }

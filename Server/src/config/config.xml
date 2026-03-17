@@ -34,6 +34,8 @@
                module.MessageFileModule.filename="$properties.storageBaseDir$/$msg.sender.as2_id$-$msg.receiver.as2_id$/inbox/$msg.headers.message-id$"
                module.MessageFileModule.header="$properties.storageBaseDir$/$msg.sender.as2_id$-$msg.receiver.as2_id$/msgheaders/$date.yyyy-MM-dd$/$msg.headers.message-id$"
                module.MessageFileModule.tempdir="$properties.storageBaseDir$/temp"
+               module.ToolLauncherModule.enabled="false"
+               module.ToolLauncherModule.command=""
                module.DirectoryResenderModule.enabled="true"
                module.DirectoryResenderModule.resenddelay="60"
                module.AS2ReceiverModule.http.enabled="true"
@@ -162,6 +164,12 @@
               header="$properties.module.MessageFileModule.header$"
               protocol="as2"
               tempdir="$properties.module.MessageFileModule.tempdir$"/>
+      <module enabled="$properties.module.ToolLauncherModule.enabled$"
+              classname="org.openas2.processor.tool.ToolLauncherModule"
+              module_action="store"
+              command="$properties.module.ToolLauncherModule.command$"
+              protocol="as2"
+              filename="$properties.module.MessageFileModule.filename$"/>
       <module enabled="$properties.module.AS2ReceiverModule.http.enabled$"
               classname="org.openas2.processor.receiver.AS2ReceiverModule"
               port="$properties.module.AS2ReceiverModule.http.port$"

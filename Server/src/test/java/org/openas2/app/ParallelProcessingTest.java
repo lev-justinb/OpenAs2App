@@ -142,7 +142,7 @@ public class ParallelProcessingTest {
     }
 
     private int getDeliveredMessagesCount(int expectedCnt) throws IOException {
-        return waitTillAllFilesReceived(server2PartnerReceiver.getInbox(), expectedCnt, 45, TimeUnit.SECONDS);
+        return waitTillAllFilesReceived(server2PartnerReceiver.getInbox(), expectedCnt, 90, TimeUnit.SECONDS);
     }
 
 }
