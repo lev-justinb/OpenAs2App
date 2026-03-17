@@ -34,7 +34,19 @@ public abstract class PollingModule extends MessageBuilderModule {
         return getParameterInt(PARAM_POLLING_INTERVAL, true);
     }
 
-    public abstract void poll();
+    /**
+     * Performs a poll. When called from triggerPollNow, the first poll clears sent-file tracking
+     * and the second poll accumulates, so both polls' results are available to the API.
+     *
+     * @param clearSentLists if true, clear lastPollSentFileNames/details before polling (fresh start).
+     *                      if false, accumulate (used for second poll in triggerPollNow).
+     */
+    public abstract void poll(boolean clearSentLists);
+
+    /** Convenience: poll with clearSentLists=true (fresh start). */
+    public final void poll() {
+        poll(true);
+    }
 
     public void doStart() throws OpenAS2Exception {
         timer = new Timer(getName(), false);
@@ -53,8 +65,8 @@ public abstract class PollingModule extends MessageBuilderModule {
             if (!isBusy()) {
                 setBusy(true);
                 try {
-                    poll();
-                    poll();
+                    poll(true);
+                    poll(false);
                 } finally {
                     setBusy(false);
                 }

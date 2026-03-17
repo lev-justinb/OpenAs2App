@@ -119,9 +119,12 @@ public abstract class DirectoryPollingModule extends PollingModule {
         return true;
     }
 
-    public void poll() {
-        lastPollSentFileNames.clear();
-        lastPollSentDetails.clear();
+    @Override
+    public void poll(boolean clearSentLists) {
+        if (clearSentLists) {
+            lastPollSentFileNames.clear();
+            lastPollSentDetails.clear();
+        }
         try {
             // update tracking info. if a file is ready, process it
             updateTracking();
