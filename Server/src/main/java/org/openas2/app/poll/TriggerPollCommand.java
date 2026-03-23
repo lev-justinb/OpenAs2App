@@ -31,8 +31,19 @@ public class TriggerPollCommand extends BaseCommand {
         return "trigger";
     }
 
+    private static boolean isUnsafeFilename(String filename) {
+        return filename.contains("/") || filename.contains("\\") || filename.contains("..");
+    }
+
     @Override
     public CommandResult execute(Object[] params) {
+        if (params != null && params.length >= 2) {
+            String filename = params[1].toString().trim();
+            if (!filename.isEmpty()) {
+                return executeForFile(filename);
+            }
+        }
+
         Session session = getSession();
         List<PollingModule> pollers;
         try {
@@ -115,6 +126,90 @@ public class TriggerPollCommand extends BaseCommand {
         result.getResults().add(pollWrapper);
 
         LOGGER.info("On-demand poll completed for {} polling module(s)", triggeredCount);
+        return result;
+    }
+
+    private CommandResult executeForFile(String filename) {
+        if (isUnsafeFilename(filename)) {
+            return new CommandResult(CommandResult.TYPE_ERROR,
+                    "Invalid filename: path components are not allowed.");
+        }
+
+        Session session = getSession();
+        List<PollingModule> pollers;
+        try {
+            pollers = session.getOutboundPollingModules();
+        } catch (OpenAS2Exception e) {
+            LOGGER.error("Failed to obtain outbound polling modules", e);
+            return new CommandResult(CommandResult.TYPE_ERROR, "Poll failed: " + e.getMessage());
+        }
+
+        LOGGER.info("Triggering targeted file send for '{}' across {} poller(s)", filename, pollers.size());
+
+        List<String> allFiles = new ArrayList<>();
+        List<String> allSentLines = new ArrayList<>();
+        List<Map<String, Object>> sentByOutbox = new ArrayList<>();
+        List<String> outboxesChecked = new ArrayList<>();
+        boolean anyFound = false;
+
+        for (PollingModule poller : pollers) {
+            if (!(poller instanceof DirectoryPollingModule)) {
+                continue;
+            }
+            DirectoryPollingModule dpm = (DirectoryPollingModule) poller;
+            String outboxId = getOutboxIdentifier(poller);
+            try {
+                boolean found = dpm.triggerFileNow(filename);
+                if (found) {
+                    anyFound = true;
+                    outboxesChecked.add(outboxId);
+                    List<String> sentNames = dpm.getLastPollSentFileNames();
+                    if (!sentNames.isEmpty()) {
+                        allFiles.addAll(sentNames);
+                        allSentLines.add("Outbox " + outboxId + ": sent " + String.join(", ", sentNames));
+
+                        Map<String, Object> entry = new LinkedHashMap<>();
+                        entry.put("outbox", outboxId);
+                        List<Map<String, String>> details = dpm.getLastPollSentDetails();
+                        if (!details.isEmpty()) {
+                            Map<String, String> first = details.get(0);
+                            if (first.containsKey("sender")) {
+                                entry.put("sender", first.get("sender"));
+                            }
+                            if (first.containsKey("receiver")) {
+                                entry.put("receiver", first.get("receiver"));
+                            }
+                        }
+                        entry.put("files", new ArrayList<>(sentNames));
+                        sentByOutbox.add(entry);
+                    }
+                }
+            } catch (OpenAS2Exception e) {
+                LOGGER.error("Targeted file send failed for poller {}", poller.getOutboxDir(), e);
+                return new CommandResult(CommandResult.TYPE_ERROR, "Poll failed: " + e.getMessage());
+            }
+        }
+
+        if (!anyFound) {
+            return new CommandResult(CommandResult.TYPE_NOT_FOUND,
+                    "File '" + filename + "' not found in any outbox.");
+        }
+
+        CommandResult result = allSentLines.isEmpty()
+                ? new CommandResult(CommandResult.TYPE_OK)
+                : new CommandResult(CommandResult.TYPE_SENT);
+
+        result.getResults().add("Poll completed for " + outboxesChecked.size() + " poller(s).");
+        result.getResults().addAll(allSentLines);
+
+        Map<String, Object> pollData = new LinkedHashMap<>();
+        pollData.put("outboxesChecked", outboxesChecked);
+        pollData.put("allFiles", allFiles);
+        pollData.put("sentByOutbox", sentByOutbox);
+        Map<String, Object> pollWrapper = new HashMap<>();
+        pollWrapper.put("poll", pollData);
+        result.getResults().add(pollWrapper);
+
         return result;
     }
 

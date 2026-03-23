@@ -4,6 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.Arrays;
@@ -15,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.openas2.OpenAS2Exception;
 import org.openas2.Session;
 import org.openas2.cmd.CommandResult;
+import org.openas2.processor.receiver.DirectoryPollingModule;
 import org.openas2.processor.receiver.PollingModule;
 
 public class TriggerPollCommandTest {
@@ -93,6 +97,19 @@ public class TriggerPollCommandTest {
     }
 
     @Test
+    public void executeReturnsErrorWhenFilenameContainsForwardSlash() throws Exception {
+        Session session = mock(Session.class);
+        TriggerPollCommand command = new TriggerPollCommand();
+        command.init(session, new HashMap<>());
+
+        CommandResult result = command.execute(new Object[]{"trigger", "../../etc/passwd"});
+
+        assertEquals(CommandResult.TYPE_ERROR, result.getType());
+        assertTrue(result.getResult().contains("Invalid filename"));
+        verify(session, never()).getOutboundPollingModules();
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     public void executeIncludesSentFileNamesInResult() throws Exception {
         Session session = mock(Session.class);
@@ -131,5 +148,86 @@ public class TriggerPollCommandTest {
         assertEquals(1, sentByOutbox.size());
         assertEquals("outbox", sentByOutbox.get(0).get("outbox"));
         assertEquals(Arrays.asList("file1.edi", "file2.edi"), sentByOutbox.get(0).get("files"));
+    }
+
+    @Test
+    public void executeReturnsErrorWhenFilenameContainsBackslash() throws Exception {
+        TriggerPollCommand command = new TriggerPollCommand();
+        command.init(mock(Session.class), new HashMap<>());
+
+        CommandResult result = command.execute(new Object[]{"trigger", "file\\etc.edi"});
+
+        assertEquals(CommandResult.TYPE_ERROR, result.getType());
+        assertTrue(result.getResult().contains("Invalid filename"));
+    }
+
+    @Test
+    public void executeReturnsErrorWhenFilenameContainsDotDot() throws Exception {
+        TriggerPollCommand command = new TriggerPollCommand();
+        command.init(mock(Session.class), new HashMap<>());
+
+        CommandResult result = command.execute(new Object[]{"trigger", "..\\secret.edi"});
+
+        assertEquals(CommandResult.TYPE_ERROR, result.getType());
+        assertTrue(result.getResult().contains("Invalid filename"));
+    }
+
+    @Test
+    public void executeReturnsNotFoundWhenNoPollerFindsTheFile() throws Exception {
+        Session session = mock(Session.class);
+        DirectoryPollingModule poller = mock(DirectoryPollingModule.class);
+        when(poller.getOutboxDir()).thenReturn("/path/to/outbox");
+        when(poller.triggerFileNow("missing.edi")).thenReturn(false);
+        when(session.getOutboundPollingModules()).thenReturn(Collections.singletonList(poller));
+
+        TriggerPollCommand command = new TriggerPollCommand();
+        command.init(session, new HashMap<>());
+
+        CommandResult result = command.execute(new Object[]{"trigger", "missing.edi"});
+
+        assertEquals(CommandResult.TYPE_NOT_FOUND, result.getType());
+        assertTrue(result.getResult().contains("missing.edi"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void executeReturnsSentWhenPollerFindsAndSendsFile() throws Exception {
+        Session session = mock(Session.class);
+        DirectoryPollingModule poller = mock(DirectoryPollingModule.class);
+        when(poller.getOutboxDir()).thenReturn("/path/to/outbox");
+        when(poller.triggerFileNow("invoice.edi")).thenReturn(true);
+        when(poller.getLastPollSentFileNames()).thenReturn(Arrays.asList("invoice.edi"));
+        when(poller.getLastPollSentDetails()).thenReturn(Collections.emptyList());
+        when(session.getOutboundPollingModules()).thenReturn(Collections.singletonList(poller));
+
+        TriggerPollCommand command = new TriggerPollCommand();
+        command.init(session, new HashMap<>());
+
+        CommandResult result = command.execute(new Object[]{"trigger", "invoice.edi"});
+
+        assertEquals(CommandResult.TYPE_SENT, result.getType());
+        assertTrue(result.getResult().contains("invoice.edi"));
+
+        Object lastEntry = result.getResults().get(result.getResults().size() - 1);
+        assertTrue(lastEntry instanceof Map);
+        Map<String, Object> pollWrapper = (Map<String, Object>) lastEntry;
+        Map<String, Object> poll = (Map<String, Object>) pollWrapper.get("poll");
+        List<String> allFiles = (List<String>) poll.get("allFiles");
+        assertTrue(allFiles.contains("invoice.edi"));
+    }
+
+    @Test
+    public void executeReturnsNotFoundWhenOnlyNonDirectoryPollersExist() throws Exception {
+        Session session = mock(Session.class);
+        PollingModule plainPoller = mock(PollingModule.class);
+        when(session.getOutboundPollingModules()).thenReturn(Collections.singletonList(plainPoller));
+
+        TriggerPollCommand command = new TriggerPollCommand();
+        command.init(session, new HashMap<>());
+
+        CommandResult result = command.execute(new Object[]{"trigger", "invoice.edi"});
+
+        assertEquals(CommandResult.TYPE_NOT_FOUND, result.getType());
+        verifyNoInteractions(plainPoller);
     }
 }
