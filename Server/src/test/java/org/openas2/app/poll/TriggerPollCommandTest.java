@@ -88,6 +88,11 @@ public class TriggerPollCommandTest {
     }
 
     @Test
+    public void commandResultHasNotFoundType() {
+        assertEquals("NOT_FOUND", CommandResult.TYPE_NOT_FOUND);
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     public void executeIncludesSentFileNamesInResult() throws Exception {
         Session session = mock(Session.class);
