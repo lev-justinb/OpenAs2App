@@ -353,12 +353,23 @@ public abstract class DirectoryPollingModule extends PollingModule {
         }
     }
 
+    /**
+     * Directly sends a single file from this module's outbox directory without triggering a full poll.
+     * Bypasses extension and filename-regex filters (caller is trusted to supply a valid filename).
+     * Does not reset the polling timer.
+     *
+     * @param filename plain filename (no path components) to send
+     * @return {@code true} if the file was found and processing was attempted;
+     *         {@code false} if the file was not found or the poller was busy
+     * @throws OpenAS2Exception if the resolved path escapes the outbox directory (path traversal),
+     *                          or if the filesystem path cannot be resolved
+     */
     public boolean triggerFileNow(String filename) throws OpenAS2Exception {
         try {
             File outbox = new File(getOutboxDir()).getCanonicalFile();
             File file = new File(outbox, filename).getCanonicalFile();
             // Layer 2: canonical path must remain inside the outbox dir
-            if (!file.getCanonicalPath().startsWith(outbox.getCanonicalPath() + File.separator)) {
+            if (!file.getPath().startsWith(outbox.getPath() + File.separator)) {
                 throw new OpenAS2Exception("Path traversal detected for filename: " + filename);
             }
             if (!file.exists() || !file.isFile()) {
