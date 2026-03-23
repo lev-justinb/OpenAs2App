@@ -224,6 +224,38 @@ public class TriggerPollCommandTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    public void executeReturnsSentWithEmptyFilesWhenPollerFoundFileButProcessingFailed() throws Exception {
+        Session session = mock(Session.class);
+        DirectoryPollingModule poller = mock(DirectoryPollingModule.class);
+        when(poller.getOutboxDir()).thenReturn("/path/to/outbox");
+        // File was found (processing attempted) but processing failed — sent list is empty
+        when(poller.triggerFileNow("invoice.edi")).thenReturn(true);
+        when(poller.getLastPollSentFileNames()).thenReturn(Collections.emptyList());
+        when(poller.getLastPollSentDetails()).thenReturn(Collections.emptyList());
+        when(session.getOutboundPollingModules()).thenReturn(Collections.singletonList(poller));
+
+        TriggerPollCommand command = new TriggerPollCommand();
+        command.init(session, new HashMap<>());
+
+        CommandResult result = command.execute(new Object[]{"trigger", "invoice.edi"});
+
+        // File was found → TYPE_SENT (not TYPE_OK), even though nothing was actually sent
+        assertEquals(CommandResult.TYPE_SENT, result.getType());
+
+        Object lastEntry = result.getResults().get(result.getResults().size() - 1);
+        Map<String, Object> poll = (Map<String, Object>) ((Map<?, ?>) lastEntry).get("poll");
+        List<String> outboxesChecked = (List<String>) poll.get("outboxesChecked");
+        assertEquals(1, outboxesChecked.size()); // outbox was checked
+
+        List<String> allFiles = (List<String>) poll.get("allFiles");
+        assertTrue(allFiles.isEmpty()); // but nothing was sent
+
+        List<?> sentByOutbox = (List<?>) poll.get("sentByOutbox");
+        assertTrue(sentByOutbox.isEmpty()); // sentByOutbox only populated for successful sends
+    }
+
+    @Test
     public void executeReturnsNotFoundWhenOnlyNonDirectoryPollersExist() throws Exception {
         Session session = mock(Session.class);
         PollingModule plainPoller = mock(PollingModule.class);
