@@ -352,4 +352,34 @@ public abstract class DirectoryPollingModule extends PollingModule {
             return new ArrayList<>(lastPollSentDetails);
         }
     }
+
+    public boolean triggerFileNow(String filename) throws OpenAS2Exception {
+        try {
+            File outbox = new File(getOutboxDir()).getCanonicalFile();
+            File file = new File(outbox, filename).getCanonicalFile();
+            // Layer 2: canonical path must remain inside the outbox dir
+            if (!file.getCanonicalPath().startsWith(outbox.getCanonicalPath() + File.separator)) {
+                throw new OpenAS2Exception("Path traversal detected for filename: " + filename);
+            }
+            if (!file.exists() || !file.isFile()) {
+                return false;
+            }
+            synchronized (this) {
+                if (isBusy()) {
+                    return false;
+                }
+                setBusy(true);
+            }
+            try {
+                lastPollSentFileNames.clear();
+                lastPollSentDetails.clear();
+                processSingleFile(file, file.getAbsolutePath());
+            } finally {
+                setBusy(false);
+            }
+            return true;
+        } catch (IOException e) {
+            throw new OpenAS2Exception("Failed to resolve file path for filename: " + filename, e);
+        }
+    }
 }
