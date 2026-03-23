@@ -214,6 +214,13 @@ public class TriggerPollCommandTest {
         Map<String, Object> poll = (Map<String, Object>) pollWrapper.get("poll");
         List<String> allFiles = (List<String>) poll.get("allFiles");
         assertTrue(allFiles.contains("invoice.edi"));
+
+        List<String> outboxesChecked = (List<String>) poll.get("outboxesChecked");
+        assertEquals(1, outboxesChecked.size());
+
+        List<Map<String, Object>> sentByOutbox = (List<Map<String, Object>>) poll.get("sentByOutbox");
+        assertEquals(1, sentByOutbox.size());
+        assertEquals(Arrays.asList("invoice.edi"), sentByOutbox.get(0).get("files"));
     }
 
     @Test

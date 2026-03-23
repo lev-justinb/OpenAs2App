@@ -195,9 +195,7 @@ public class TriggerPollCommand extends BaseCommand {
                     "File '" + filename + "' not found in any outbox.");
         }
 
-        CommandResult result = allSentLines.isEmpty()
-                ? new CommandResult(CommandResult.TYPE_OK)
-                : new CommandResult(CommandResult.TYPE_SENT);
+        CommandResult result = new CommandResult(CommandResult.TYPE_SENT);
 
         result.getResults().add("Poll completed for " + outboxesChecked.size() + " poller(s).");
         result.getResults().addAll(allSentLines);
