@@ -11,6 +11,7 @@ Extend the existing `POST /api/poll/trigger` REST endpoint to accept an optional
 
 - `POST /api/poll/trigger` with no body → existing behavior (poll all outboxes, send all pending files)
 - `POST /api/poll/trigger` with `Content-Type: application/json` body `{"file": "1.edi"}` → only send the file named `1.edi`
+- The `file` value must be a plain filename with no path components; path traversal and absolute path arguments are rejected with `ERROR`
 - All polling modules (all outbox directories) are checked for the filename
 - If the file is found and sent in one or more outboxes → return `SENT` result
 - If the filename is not found in any outbox → return a distinct `NOT_FOUND` result (new)
@@ -70,7 +71,12 @@ Add a new public method `triggerFileNow` that directly processes a single named 
 
 ```java
 public boolean triggerFileNow(String filename) throws OpenAS2Exception {
-    File file = new File(getOutboxDir(), filename);
+    File outbox = new File(getOutboxDir()).getCanonicalFile();
+    File file = new File(outbox, filename).getCanonicalFile();
+    // Layer 2 defense-in-depth: ensure the resolved path is still inside the outbox
+    if (!file.getCanonicalPath().startsWith(outbox.getCanonicalPath() + File.separator)) {
+        throw new OpenAS2Exception("Path traversal detected for filename: " + filename);
+    }
     if (!file.exists() || !file.isFile()) {
         return false;
     }
@@ -104,6 +110,7 @@ Branch in `execute(Object[] params)` based on whether a filename param was provi
 
 - **No filename** (`params.length < 2`) → existing path: call `triggerPollNow()` on all pollers
 - **Filename present** (`params[1]` is a non-empty string) → new path:
+  - **Layer 1 — input validation (fail fast):** Reject the filename if it contains `/`, `\`, or `..` as a component. Return `CommandResult(TYPE_ERROR, "Invalid filename: path components are not allowed.")` immediately without touching any poller.
   - For each poller: if poller is a `DirectoryPollingModule`, call `triggerFileNow(filename)` and track the result; pollers that are not `DirectoryPollingModule` are skipped (no outbox directory concept)
   - If no poller returned `true` → return `CommandResult(TYPE_NOT_FOUND, "File '<name>' not found in any outbox.")`
   - If at least one poller returned `true` → build and return a `SENT` result using the same result-building loop as the existing full-poll path: iterate pollers that found the file, call `getLastPollSentFileNames()` / `getLastPollSentDetails()`, populate `outboxesChecked`, `allFiles`, `sentByOutbox` in the same structure. Only outboxes with non-empty `getLastPollSentFileNames()` are included in `sentByOutbox`.
@@ -119,8 +126,11 @@ Content-Type: application/json
       → feedCommand("poll", ["trigger", "1.edi"])
           → TriggerPollCommand.execute(["trigger", "1.edi"])
               → filename = params[1] = "1.edi"
+              → Layer 1: reject if filename contains '/', '\', or '..'
               → for each DirectoryPollingModule poller:
                     poller.triggerFileNow("1.edi")
+                        → Layer 2: canonical path check — resolved path must be inside outbox dir
+                        → if path escapes outbox: throw OpenAS2Exception
                         → checks outboxDir/1.edi exists
                         → if busy: returns false
                         → sets busy=true
@@ -155,6 +165,14 @@ The result structure is identical to the full-poll `SENT` response. The same res
 }
 ```
 
+**Path traversal attempt rejected (Layer 1):**
+```json
+{
+  "type": "ERROR",
+  "results": ["Invalid filename: path components are not allowed."]
+}
+```
+
 **No body / empty JSON body `{}` / form-encoded (existing behavior):**
 ```json
 {
@@ -169,22 +187,26 @@ The result structure is identical to the full-poll `SENT` response. The same res
 - Filename param at index 1, one `DirectoryPollingModule` mock returns `true` from `triggerFileNow` and returns `["1.edi"]` from `getLastPollSentFileNames()` → result type is `SENT`, filename appears in results
 - Filename param at index 1, all `DirectoryPollingModule` pollers return `false` → result type is `NOT_FOUND`, message contains the filename
 - Filename param at index 1, poller is a plain `PollingModule` (not `DirectoryPollingModule`) → skipped, result is `NOT_FOUND`
+- Filename contains `/` → result type is `ERROR`, no pollers called
+- Filename contains `\` → result type is `ERROR`, no pollers called
+- Filename contains `..` → result type is `ERROR`, no pollers called
 - Existing tests with no filename param remain unchanged
 
 **`DirectoryPollingModule` unit tests** — add for `triggerFileNow`. Since `DirectoryPollingModule` is abstract, tests must use a concrete subclass (e.g., a minimal test double that implements `createMessage()`):
 - File exists in outbox → returns `true`, `getLastPollSentFileNames()` contains the filename
 - File does not exist → returns `false`
 - Poller is busy when `triggerFileNow` is called → returns `false` without processing
+- Filename that passes Layer 1 but whose canonical path escapes the outbox (e.g., via a symlink) → throws `OpenAS2Exception`
 
 ## Files Changed
 
 1. `CommandResult.java` — add `TYPE_NOT_FOUND` constant
 2. `PollingModule.java` — promote `isBusy()` / `setBusy()` to `protected`
 3. `ApiResource.java` — add `triggerPollWithBody` method
-4. `DirectoryPollingModule.java` — add `triggerFileNow` method
-5. `TriggerPollCommand.java` — add filename-filter branch in `execute`
-6. `TriggerPollCommandTest.java` — add new test cases
-7. `DirectoryPollingModuleTest.java` (new or existing) — add `triggerFileNow` tests
+4. `DirectoryPollingModule.java` — add `triggerFileNow` method (with Layer 2 canonical path check)
+5. `TriggerPollCommand.java` — add filename-filter branch in `execute` with Layer 1 input validation
+6. `TriggerPollCommandTest.java` — add new test cases including path traversal rejection
+7. `DirectoryPollingModuleTest.java` (new or existing) — add `triggerFileNow` tests including symlink escape
 
 ## Out of Scope
 
