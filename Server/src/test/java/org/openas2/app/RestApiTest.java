@@ -43,6 +43,7 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.text.MatchesPattern.matchesPattern;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @ExtendWith(MockitoExtension.class)
 @TestMethodOrder(MethodOrderer.MethodName.class)
@@ -229,5 +230,22 @@ public class RestApiTest {
         String normalized = buffer.replaceAll("[\\n\\r]+",  ":");
         assertThat("Trigger poll via API ", normalized, containsString("\"type\" : \"OK\""));
         assertThat("Trigger poll via API message ", normalized, containsString("Poll completed for"));
+    }
+
+    @Test
+    public void test_Z_pollTriggerWithJsonBodyReturnsNotFoundForMissingFile() throws Exception {
+        HttpPost post = new HttpPost(baseUrl + "poll/trigger");
+        post.setHeader("Content-Type", "application/json");
+        post.setEntity(new org.apache.http.entity.StringEntity(
+                "{\"file\":\"nonexistent-file-xyz.edi\"}", "UTF-8"));
+
+        try (CloseableHttpClient httpClient = HttpClients.custom()
+                .setDefaultCredentialsProvider(getCredentials()).build();
+             CloseableHttpResponse response = httpClient.execute(post)) {
+            assertEquals(HttpStatus.SC_OK, response.getStatusLine().getStatusCode());
+            String body = EntityUtils.toString(response.getEntity());
+            assertThat(body, containsString("NOT_FOUND"));
+            assertThat(body, containsString("nonexistent-file-xyz.edi"));
+        }
     }
 }

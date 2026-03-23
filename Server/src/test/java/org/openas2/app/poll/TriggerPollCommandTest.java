@@ -102,7 +102,7 @@ public class TriggerPollCommandTest {
         TriggerPollCommand command = new TriggerPollCommand();
         command.init(session, new HashMap<>());
 
-        CommandResult result = command.execute(new Object[]{"trigger", "../../etc/passwd"});
+        CommandResult result = command.execute(new Object[]{"../../etc/passwd"});
 
         assertEquals(CommandResult.TYPE_ERROR, result.getType());
         assertTrue(result.getResult().contains("Invalid filename"));
@@ -155,7 +155,7 @@ public class TriggerPollCommandTest {
         TriggerPollCommand command = new TriggerPollCommand();
         command.init(mock(Session.class), new HashMap<>());
 
-        CommandResult result = command.execute(new Object[]{"trigger", "file\\etc.edi"});
+        CommandResult result = command.execute(new Object[]{"file\\etc.edi"});
 
         assertEquals(CommandResult.TYPE_ERROR, result.getType());
         assertTrue(result.getResult().contains("Invalid filename"));
@@ -166,7 +166,7 @@ public class TriggerPollCommandTest {
         TriggerPollCommand command = new TriggerPollCommand();
         command.init(mock(Session.class), new HashMap<>());
 
-        CommandResult result = command.execute(new Object[]{"trigger", "..\\secret.edi"});
+        CommandResult result = command.execute(new Object[]{"..\\secret.edi"});
 
         assertEquals(CommandResult.TYPE_ERROR, result.getType());
         assertTrue(result.getResult().contains("Invalid filename"));
@@ -183,7 +183,7 @@ public class TriggerPollCommandTest {
         TriggerPollCommand command = new TriggerPollCommand();
         command.init(session, new HashMap<>());
 
-        CommandResult result = command.execute(new Object[]{"trigger", "missing.edi"});
+        CommandResult result = command.execute(new Object[]{"missing.edi"});
 
         assertEquals(CommandResult.TYPE_NOT_FOUND, result.getType());
         assertTrue(result.getResult().contains("missing.edi"));
@@ -203,7 +203,7 @@ public class TriggerPollCommandTest {
         TriggerPollCommand command = new TriggerPollCommand();
         command.init(session, new HashMap<>());
 
-        CommandResult result = command.execute(new Object[]{"trigger", "invoice.edi"});
+        CommandResult result = command.execute(new Object[]{"invoice.edi"});
 
         assertEquals(CommandResult.TYPE_SENT, result.getType());
         assertTrue(result.getResult().contains("invoice.edi"));

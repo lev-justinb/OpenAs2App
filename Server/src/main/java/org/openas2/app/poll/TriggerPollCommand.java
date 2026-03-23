@@ -37,8 +37,11 @@ public class TriggerPollCommand extends BaseCommand {
 
     @Override
     public CommandResult execute(Object[] params) {
-        if (params != null && params.length >= 2) {
-            String filename = params[1].toString().trim();
+        if (params != null && params.length >= 1) {
+            String filename = params[0].toString().trim();
+            if ("trigger".equalsIgnoreCase(filename) && params.length >= 2) {
+                filename = params[1].toString().trim();
+            }
             if (!filename.isEmpty()) {
                 return executeForFile(filename);
             }

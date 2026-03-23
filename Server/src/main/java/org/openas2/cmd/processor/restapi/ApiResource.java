@@ -45,6 +45,7 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import org.slf4j.LoggerFactory;
 
 /**
@@ -168,6 +169,50 @@ public class ApiResource {
             // return Response.status(506).entity( ex.getMessage()).build();
         }
 
+    }
+
+    @RolesAllowed({"ADMIN"})
+    @POST
+    @Path("poll/trigger")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response triggerPollWithBody(java.io.InputStream bodyStream) throws Exception {
+        return triggerPollFromBody(bodyStream);
+    }
+
+    @RolesAllowed({"ADMIN"})
+    @POST
+    @Path("poll/trigger")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    public Response triggerPollWithForm(MultivaluedMap<String, String> formParams) throws Exception {
+        return triggerPollFromBody(null);
+    }
+
+    private Response triggerPollFromBody(java.io.InputStream bodyStream) throws Exception {
+        try {
+            List<String> params = new ArrayList<>();
+            params.add("trigger");
+            LoggerFactory.getLogger(ApiResource.class.getName()).info("TRIGGER_POLL_WITH_BODY called, bodyStream={}", bodyStream);
+            if (bodyStream != null) {
+                byte[] bytes = bodyStream.readAllBytes();
+                LoggerFactory.getLogger(ApiResource.class.getName()).info("TRIGGER_POLL_WITH_BODY body bytes={}", bytes.length);
+                if (bytes.length > 0) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, String> body = mapper.readValue(bytes, Map.class);
+                    LoggerFactory.getLogger(ApiResource.class.getName()).info("TRIGGER_POLL_WITH_BODY body={}", body);
+                    if (body != null && body.containsKey("file")) {
+                        params.add(body.get("file"));
+                    }
+                }
+            }
+            CommandResult output = getProcessor().feedCommand("poll", params);
+            String jsonResult = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(output);
+            return Response.status(200).entity(jsonResult).type(MediaType.APPLICATION_JSON).build();
+        } catch (Exception ex) {
+            LoggerFactory.getLogger(ApiResource.class.getName()).error(ex.getMessage(), ex);
+            throw ex;
+        }
     }
 
     @RolesAllowed({"ADMIN"})
