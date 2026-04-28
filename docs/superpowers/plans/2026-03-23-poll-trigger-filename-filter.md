@@ -776,3 +776,8 @@ curl -s -X POST -u "userID:pWd" \
   -H "Content-Type: application/x-www-form-urlencoded" \
   "http://localhost:8080/api/poll/trigger" | python -m json.tool
 ```
+
+Powershell:
+```ps
+curl.exe --% -s -i -X POST -u "userID:pWd" -H "Content-Type: application/json" -d "{\"file\":\"fiile.txt\"}" "http://localhost:8080/api/poll/trigger"
+```
