@@ -63,6 +63,8 @@ public class TriggerPollCommand extends BaseCommand {
         List<String> outboxesChecked = new ArrayList<>();
         List<String> allFiles = new ArrayList<>();
         List<Map<String, Object>> sentByOutbox = new ArrayList<>();
+        List<Map<String, Object>> failures = new ArrayList<>();
+        boolean hasAnySendFailure = false;
 
         for (PollingModule poller : pollers) {
             try {
@@ -72,6 +74,18 @@ public class TriggerPollCommand extends BaseCommand {
                 outboxesChecked.add(outboxId);
 
                 List<String> sentNames = poller.getLastPollSentFileNames();
+                if (poller instanceof DirectoryPollingModule) {
+                    List<Map<String, Object>> attemptDetails = ((DirectoryPollingModule) poller).getLastPollAttemptDetails();
+                    for (Map<String, Object> attempt : attemptDetails) {
+                        Object success = attempt.get("success");
+                        if (Boolean.FALSE.equals(success)) {
+                            Map<String, Object> failure = new LinkedHashMap<>(attempt);
+                            failure.put("outbox", outboxId);
+                            failures.add(failure);
+                            hasAnySendFailure = true;
+                        }
+                    }
+                }
                 if (!sentNames.isEmpty()) {
                     allFiles.addAll(sentNames);
 
@@ -107,7 +121,9 @@ public class TriggerPollCommand extends BaseCommand {
         }
 
         CommandResult result;
-        if (allSentLines.isEmpty()) {
+        if (hasAnySendFailure) {
+            result = new CommandResult(CommandResult.TYPE_ERROR);
+        } else if (allSentLines.isEmpty()) {
             result = new CommandResult(CommandResult.TYPE_OK);
         } else {
             result = new CommandResult(CommandResult.TYPE_SENT);
@@ -124,6 +140,7 @@ public class TriggerPollCommand extends BaseCommand {
         pollData.put("outboxesChecked", outboxesChecked);
         pollData.put("allFiles", allFiles);
         pollData.put("sentByOutbox", sentByOutbox);
+        pollData.put("failures", failures);
         Map<String, Object> pollWrapper = new HashMap<>();
         pollWrapper.put("poll", pollData);
         result.getResults().add(pollWrapper);
@@ -153,7 +170,9 @@ public class TriggerPollCommand extends BaseCommand {
         List<String> allSentLines = new ArrayList<>();
         List<Map<String, Object>> sentByOutbox = new ArrayList<>();
         List<String> outboxesChecked = new ArrayList<>();
+        List<Map<String, Object>> failures = new ArrayList<>();
         boolean anyFound = false;
+        boolean hasAnySendFailure = false;
 
         for (PollingModule poller : pollers) {
             if (!(poller instanceof DirectoryPollingModule)) {
@@ -166,6 +185,16 @@ public class TriggerPollCommand extends BaseCommand {
                 if (found) {
                     anyFound = true;
                     outboxesChecked.add(outboxId);
+                    List<Map<String, Object>> attemptDetails = dpm.getLastPollAttemptDetails();
+                    for (Map<String, Object> attempt : attemptDetails) {
+                        Object success = attempt.get("success");
+                        if (Boolean.FALSE.equals(success)) {
+                            Map<String, Object> failure = new LinkedHashMap<>(attempt);
+                            failure.put("outbox", outboxId);
+                            failures.add(failure);
+                            hasAnySendFailure = true;
+                        }
+                    }
                     List<String> sentNames = dpm.getLastPollSentFileNames();
                     if (!sentNames.isEmpty()) {
                         allFiles.addAll(sentNames);
@@ -198,7 +227,9 @@ public class TriggerPollCommand extends BaseCommand {
                     "File '" + filename + "' not found in any outbox.");
         }
 
-        CommandResult result = new CommandResult(CommandResult.TYPE_SENT);
+        CommandResult result = hasAnySendFailure
+                ? new CommandResult(CommandResult.TYPE_ERROR)
+                : new CommandResult(CommandResult.TYPE_SENT);
 
         result.getResults().add("Poll completed for " + outboxesChecked.size() + " poller(s).");
         result.getResults().addAll(allSentLines);
@@ -207,6 +238,7 @@ public class TriggerPollCommand extends BaseCommand {
         pollData.put("outboxesChecked", outboxesChecked);
         pollData.put("allFiles", allFiles);
         pollData.put("sentByOutbox", sentByOutbox);
+        pollData.put("failures", failures);
         Map<String, Object> pollWrapper = new HashMap<>();
         pollWrapper.put("poll", pollData);
         result.getResults().add(pollWrapper);
@@ -221,4 +253,5 @@ public class TriggerPollCommand extends BaseCommand {
         }
         return poller.getName();
     }
+
 }

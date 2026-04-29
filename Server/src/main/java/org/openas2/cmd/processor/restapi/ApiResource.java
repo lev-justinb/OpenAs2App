@@ -208,10 +208,27 @@ public class ApiResource {
             }
             CommandResult output = getProcessor().feedCommand("poll", params);
             String jsonResult = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(output);
-            return Response.status(200).entity(jsonResult).type(MediaType.APPLICATION_JSON).build();
+            return Response.status(getPollTriggerHttpStatus(output)).entity(jsonResult).type(MediaType.APPLICATION_JSON).build();
         } catch (Exception ex) {
             LoggerFactory.getLogger(ApiResource.class.getName()).error(ex.getMessage(), ex);
             throw ex;
+        }
+    }
+
+    static int getPollTriggerHttpStatus(CommandResult output) {
+        if (output == null || output.getType() == null) {
+            return 500;
+        }
+        switch (output.getType()) {
+            case CommandResult.TYPE_ERROR:
+                return 502;
+            case CommandResult.TYPE_NOT_FOUND:
+                return 404;
+            case CommandResult.TYPE_OK:
+            case CommandResult.TYPE_SENT:
+                return 200;
+            default:
+                return 500;
         }
     }
 

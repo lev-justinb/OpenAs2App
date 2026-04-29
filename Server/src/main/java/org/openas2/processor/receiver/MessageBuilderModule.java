@@ -19,6 +19,7 @@ import org.openas2.params.RandomParameters;
 import org.openas2.partner.Partnership;
 import org.openas2.processor.Processor;
 import org.openas2.processor.resender.ResenderModule;
+import org.openas2.processor.sender.HttpResponseException;
 import org.openas2.processor.sender.SenderModule;
 import org.openas2.util.AS2Util;
 import org.openas2.util.FileUtil;
@@ -57,6 +58,12 @@ public abstract class MessageBuilderModule extends BaseReceiverModule {
     public static final String PARAM_RESEND_MAX_RETRIES = "resend_max_retries";
     // Note: When this option is enabled, you can also configure its quoting using "quote_send_file_name" at partnership-level
     public static final String PARAM_SEND_FILENAME = "sendfilename";
+    public static final String OPTION_POLL_FAILURE_TYPE = "POLL_FAILURE_TYPE";
+    public static final String OPTION_POLL_PARTNER_HTTP_CODE = "POLL_PARTNER_HTTP_CODE";
+    public static final String OPTION_POLL_PARTNER_HTTP_REASON = "POLL_PARTNER_HTTP_REASON";
+    public static final String OPTION_POLL_FAILURE_MESSAGE = "POLL_FAILURE_MESSAGE";
+    private static final String POLL_FAILURE_TYPE_TRANSPORT = "TRANSPORT";
+    private static final String POLL_FAILURE_TYPE_HTTP_RESPONSE = "HTTP_RESPONSE";
     
     private Logger logger = LoggerFactory.getLogger(MessageBuilderModule.class);
 
@@ -239,6 +246,14 @@ public abstract class MessageBuilderModule extends BaseReceiverModule {
             msg.setStatus(Message.MSG_STATUS_MSG_SEND);
             // Transmit the message
             getSession().getProcessor().handle(SenderModule.DO_SEND, msg, options);
+            if (isSendFailureState(msg)) {
+                markTransportFailure(msg);
+            } else {
+                msg.setOption(OPTION_POLL_FAILURE_TYPE, null);
+                msg.setOption(OPTION_POLL_PARTNER_HTTP_CODE, null);
+                msg.setOption(OPTION_POLL_PARTNER_HTTP_REASON, null);
+                msg.setOption(OPTION_POLL_FAILURE_MESSAGE, null);
+            }
             // Cleanup files only if sending was successful and an MDN was already received
             if (!msg.isResend() && !msg.isConfiguredForAsynchMDN()) {
                 if (logger.isDebugEnabled()) {
@@ -249,10 +264,43 @@ public abstract class MessageBuilderModule extends BaseReceiverModule {
         } catch (Exception e) {
             msg.setLogMsg("Fatal error sending message: " + org.openas2.util.Logging.getExceptionMsg(e));
             logger.error(msg.getLogMsg(), e);
+            markTransportFailure(msg);
+            Throwable cause = e;
+            while (cause != null) {
+                if (cause instanceof HttpResponseException) {
+                    HttpResponseException hre = (HttpResponseException) cause;
+                    msg.setOption(OPTION_POLL_FAILURE_TYPE, POLL_FAILURE_TYPE_HTTP_RESPONSE);
+                    msg.setOption(OPTION_POLL_PARTNER_HTTP_CODE, Integer.toString(hre.getCode()));
+                    msg.setOption(OPTION_POLL_PARTNER_HTTP_REASON, hre.getMessage());
+                    msg.setOption(OPTION_POLL_FAILURE_MESSAGE, msg.getLogMsg());
+                    break;
+                }
+                cause = cause.getCause();
+            }
             AS2Util.cleanupFiles(msg, true);
         }
         return msg;
 
+    }
+
+    private static boolean isSendFailureState(Message msg) {
+        Object state = msg.getOption("STATE");
+        if (state == null) {
+            return false;
+        }
+        String stateVal = state.toString();
+        return Message.MSG_STATE_SEND_EXCEPTION.equals(stateVal)
+                || Message.MSG_STATE_SEND_FAIL.equals(stateVal)
+                || Message.MSG_STATE_SEND_FAIL_RESEND_QUEUED.equals(stateVal)
+                || Message.MSG_STATE_MSG_SENT_MDN_RECEIVED_ERROR.equals(stateVal)
+                || Message.MSG_STATE_MSG_SENT_MDN_PROCESSING_ERROR.equals(stateVal);
+    }
+
+    private static void markTransportFailure(Message msg) {
+        msg.setOption(OPTION_POLL_FAILURE_TYPE, POLL_FAILURE_TYPE_TRANSPORT);
+        msg.setOption(OPTION_POLL_PARTNER_HTTP_CODE, null);
+        msg.setOption(OPTION_POLL_PARTNER_HTTP_REASON, null);
+        msg.setOption(OPTION_POLL_FAILURE_MESSAGE, msg.getLogMsg());
     }
 
     protected abstract Message createMessage();

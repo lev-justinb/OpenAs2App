@@ -242,7 +242,7 @@ public class RestApiTest {
         try (CloseableHttpClient httpClient = HttpClients.custom()
                 .setDefaultCredentialsProvider(getCredentials()).build();
              CloseableHttpResponse response = httpClient.execute(post)) {
-            assertEquals(HttpStatus.SC_OK, response.getStatusLine().getStatusCode());
+            assertEquals(HttpStatus.SC_NOT_FOUND, response.getStatusLine().getStatusCode());
             String body = EntityUtils.toString(response.getEntity());
             assertThat(body, containsString("NOT_FOUND"));
             assertThat(body, containsString("nonexistent-file-xyz.edi"));

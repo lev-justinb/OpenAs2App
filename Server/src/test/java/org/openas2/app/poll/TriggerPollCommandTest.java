@@ -133,9 +133,7 @@ public class TriggerPollCommandTest {
 
         Object lastResult = results.get(results.size() - 1);
         assertTrue(lastResult instanceof Map);
-        @SuppressWarnings("unchecked")
         Map<String, Object> pollWrapper = (Map<String, Object>) lastResult;
-        @SuppressWarnings("unchecked")
         Map<String, Object> poll = (Map<String, Object>) pollWrapper.get("poll");
         List<String> outboxesChecked = (List<String>) poll.get("outboxesChecked");
         assertEquals(1, outboxesChecked.size());
@@ -268,5 +266,109 @@ public class TriggerPollCommandTest {
 
         assertEquals(CommandResult.TYPE_NOT_FOUND, result.getType());
         verifyNoInteractions(plainPoller);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void executeReturnsErrorAndFailureDetailsWhenPartnerReturnsNon2xx() throws Exception {
+        Session session = mock(Session.class);
+        DirectoryPollingModule poller = mock(DirectoryPollingModule.class);
+        when(poller.getOutboxDir()).thenReturn("/path/to/outbox");
+        when(session.getOutboundPollingModules()).thenReturn(Collections.singletonList(poller));
+        when(poller.getLastPollSentFileNames()).thenReturn(Collections.singletonList("invoice.edi"));
+        when(poller.getLastPollSentDetails()).thenReturn(Collections.emptyList());
+
+        Map<String, Object> failedAttempt = new HashMap<>();
+        failedAttempt.put("filename", "invoice.edi");
+        failedAttempt.put("success", false);
+        failedAttempt.put("partnerHttpCode", 500);
+        failedAttempt.put("partnerHttpReason", "Internal Server Error");
+        failedAttempt.put("errorMessage", "Fatal error sending message");
+        when(poller.getLastPollAttemptDetails()).thenReturn(Collections.singletonList(failedAttempt));
+
+        TriggerPollCommand command = new TriggerPollCommand();
+        command.init(session, new HashMap<>());
+
+        CommandResult result = command.execute(new Object[0]);
+
+        assertEquals(CommandResult.TYPE_ERROR, result.getType());
+        Object lastEntry = result.getResults().get(result.getResults().size() - 1);
+        assertTrue(lastEntry instanceof Map);
+        Map<String, Object> pollWrapper = (Map<String, Object>) lastEntry;
+        Map<String, Object> poll = (Map<String, Object>) pollWrapper.get("poll");
+        List<Map<String, Object>> failures = (List<Map<String, Object>>) poll.get("failures");
+        assertEquals(1, failures.size());
+        assertEquals("outbox", failures.get(0).get("outbox"));
+        assertEquals(500, failures.get(0).get("partnerHttpCode"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void executeReturnsErrorWhenPartnerConnectionFailsWithoutHttpCode() throws Exception {
+        Session session = mock(Session.class);
+        DirectoryPollingModule poller = mock(DirectoryPollingModule.class);
+        when(poller.getOutboxDir()).thenReturn("/path/to/outbox");
+        when(session.getOutboundPollingModules()).thenReturn(Collections.singletonList(poller));
+        when(poller.getLastPollSentFileNames()).thenReturn(Collections.emptyList());
+        when(poller.getLastPollSentDetails()).thenReturn(Collections.emptyList());
+
+        Map<String, Object> failedAttempt = new HashMap<>();
+        failedAttempt.put("filename", "invoice.edi");
+        failedAttempt.put("success", false);
+        failedAttempt.put("errorType", "TRANSPORT");
+        failedAttempt.put("errorMessage", "Connection refused");
+        when(poller.getLastPollAttemptDetails()).thenReturn(Collections.singletonList(failedAttempt));
+
+        TriggerPollCommand command = new TriggerPollCommand();
+        command.init(session, new HashMap<>());
+
+        CommandResult result = command.execute(new Object[0]);
+
+        assertEquals(CommandResult.TYPE_ERROR, result.getType());
+        Object lastEntry = result.getResults().get(result.getResults().size() - 1);
+        Map<String, Object> poll = (Map<String, Object>) ((Map<?, ?>) lastEntry).get("poll");
+        List<Map<String, Object>> failures = (List<Map<String, Object>>) poll.get("failures");
+        assertEquals(1, failures.size());
+        assertEquals("TRANSPORT", failures.get(0).get("errorType"));
+        assertEquals("Connection refused", failures.get(0).get("errorMessage"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void executeForFileIgnoresStaleFailureAttemptsFromPriorRequest() throws Exception {
+        Session session = mock(Session.class);
+        DirectoryPollingModule poller = mock(DirectoryPollingModule.class);
+        when(session.getOutboundPollingModules()).thenReturn(Collections.singletonList(poller));
+        when(poller.getOutboxDir()).thenReturn("/path/to/outbox");
+        when(poller.triggerFileNow("invoice.edi")).thenReturn(true);
+        when(poller.getLastPollSentFileNames()).thenReturn(Collections.singletonList("invoice.edi"));
+        when(poller.getLastPollSentDetails()).thenReturn(Collections.emptyList());
+
+        Map<String, Object> staleFailure = new HashMap<>();
+        staleFailure.put("filename", "old.edi");
+        staleFailure.put("success", false);
+        staleFailure.put("errorType", "TRANSPORT");
+        staleFailure.put("errorMessage", "Connection refused");
+
+        Map<String, Object> successAttempt = new HashMap<>();
+        successAttempt.put("filename", "invoice.edi");
+        successAttempt.put("success", true);
+
+        when(poller.getLastPollAttemptDetails())
+                .thenReturn(Collections.singletonList(staleFailure))
+                .thenReturn(Collections.singletonList(successAttempt));
+
+        TriggerPollCommand command = new TriggerPollCommand();
+        command.init(session, new HashMap<>());
+
+        CommandResult first = command.execute(new Object[]{"trigger", "invoice.edi"});
+        assertEquals(CommandResult.TYPE_ERROR, first.getType());
+
+        CommandResult second = command.execute(new Object[]{"trigger", "invoice.edi"});
+        assertEquals(CommandResult.TYPE_SENT, second.getType());
+        Map<String, Object> poll = (Map<String, Object>) ((Map<?, ?>) second.getResults()
+                .get(second.getResults().size() - 1)).get("poll");
+        List<Map<String, Object>> failures = (List<Map<String, Object>>) poll.get("failures");
+        assertTrue(failures.isEmpty());
     }
 }
