@@ -13,6 +13,7 @@ public class CommandResult {
     public static final String TYPE_COMMAND_NOT_SUPPORTED = "COMMAND NOT SUPPORTED";
     public static final String TYPE_EXCEPTION = "EXCEPTION";
     public static final String TYPE_SENT = "SENT";
+    public static final String TYPE_NOT_FOUND = "NOT_FOUND";
     private String type;
     private List<Object> results;
 

@@ -90,11 +90,11 @@ public abstract class PollingModule extends MessageBuilderModule {
         return Collections.emptyList();
     }
 
-    private boolean isBusy() {
+    protected boolean isBusy() {
         return busy;
     }
 
-    private void setBusy(boolean b) {
+    protected void setBusy(boolean b) {
         busy = b;
     }
 

@@ -4,6 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.Arrays;
@@ -15,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.openas2.OpenAS2Exception;
 import org.openas2.Session;
 import org.openas2.cmd.CommandResult;
+import org.openas2.processor.receiver.DirectoryPollingModule;
 import org.openas2.processor.receiver.PollingModule;
 
 public class TriggerPollCommandTest {
@@ -88,6 +92,24 @@ public class TriggerPollCommandTest {
     }
 
     @Test
+    public void commandResultHasNotFoundType() {
+        assertEquals("NOT_FOUND", CommandResult.TYPE_NOT_FOUND);
+    }
+
+    @Test
+    public void executeReturnsErrorWhenFilenameContainsForwardSlash() throws Exception {
+        Session session = mock(Session.class);
+        TriggerPollCommand command = new TriggerPollCommand();
+        command.init(session, new HashMap<>());
+
+        CommandResult result = command.execute(new Object[]{"../../etc/passwd"});
+
+        assertEquals(CommandResult.TYPE_ERROR, result.getType());
+        assertTrue(result.getResult().contains("Invalid filename"));
+        verify(session, never()).getOutboundPollingModules();
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     public void executeIncludesSentFileNamesInResult() throws Exception {
         Session session = mock(Session.class);
@@ -111,9 +133,7 @@ public class TriggerPollCommandTest {
 
         Object lastResult = results.get(results.size() - 1);
         assertTrue(lastResult instanceof Map);
-        @SuppressWarnings("unchecked")
         Map<String, Object> pollWrapper = (Map<String, Object>) lastResult;
-        @SuppressWarnings("unchecked")
         Map<String, Object> poll = (Map<String, Object>) pollWrapper.get("poll");
         List<String> outboxesChecked = (List<String>) poll.get("outboxesChecked");
         assertEquals(1, outboxesChecked.size());
@@ -126,5 +146,229 @@ public class TriggerPollCommandTest {
         assertEquals(1, sentByOutbox.size());
         assertEquals("outbox", sentByOutbox.get(0).get("outbox"));
         assertEquals(Arrays.asList("file1.edi", "file2.edi"), sentByOutbox.get(0).get("files"));
+    }
+
+    @Test
+    public void executeReturnsErrorWhenFilenameContainsBackslash() throws Exception {
+        TriggerPollCommand command = new TriggerPollCommand();
+        command.init(mock(Session.class), new HashMap<>());
+
+        CommandResult result = command.execute(new Object[]{"file\\etc.edi"});
+
+        assertEquals(CommandResult.TYPE_ERROR, result.getType());
+        assertTrue(result.getResult().contains("Invalid filename"));
+    }
+
+    @Test
+    public void executeReturnsErrorWhenFilenameContainsDotDot() throws Exception {
+        TriggerPollCommand command = new TriggerPollCommand();
+        command.init(mock(Session.class), new HashMap<>());
+
+        CommandResult result = command.execute(new Object[]{"..\\secret.edi"});
+
+        assertEquals(CommandResult.TYPE_ERROR, result.getType());
+        assertTrue(result.getResult().contains("Invalid filename"));
+    }
+
+    @Test
+    public void executeReturnsNotFoundWhenNoPollerFindsTheFile() throws Exception {
+        Session session = mock(Session.class);
+        DirectoryPollingModule poller = mock(DirectoryPollingModule.class);
+        when(poller.getOutboxDir()).thenReturn("/path/to/outbox");
+        when(poller.triggerFileNow("missing.edi")).thenReturn(false);
+        when(session.getOutboundPollingModules()).thenReturn(Collections.singletonList(poller));
+
+        TriggerPollCommand command = new TriggerPollCommand();
+        command.init(session, new HashMap<>());
+
+        CommandResult result = command.execute(new Object[]{"missing.edi"});
+
+        assertEquals(CommandResult.TYPE_NOT_FOUND, result.getType());
+        assertTrue(result.getResult().contains("missing.edi"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void executeReturnsSentWhenPollerFindsAndSendsFile() throws Exception {
+        Session session = mock(Session.class);
+        DirectoryPollingModule poller = mock(DirectoryPollingModule.class);
+        when(poller.getOutboxDir()).thenReturn("/path/to/outbox");
+        when(poller.triggerFileNow("invoice.edi")).thenReturn(true);
+        when(poller.getLastPollSentFileNames()).thenReturn(Arrays.asList("invoice.edi"));
+        when(poller.getLastPollSentDetails()).thenReturn(Collections.emptyList());
+        when(session.getOutboundPollingModules()).thenReturn(Collections.singletonList(poller));
+
+        TriggerPollCommand command = new TriggerPollCommand();
+        command.init(session, new HashMap<>());
+
+        CommandResult result = command.execute(new Object[]{"invoice.edi"});
+
+        assertEquals(CommandResult.TYPE_SENT, result.getType());
+        assertTrue(result.getResult().contains("invoice.edi"));
+
+        Object lastEntry = result.getResults().get(result.getResults().size() - 1);
+        assertTrue(lastEntry instanceof Map);
+        Map<String, Object> pollWrapper = (Map<String, Object>) lastEntry;
+        Map<String, Object> poll = (Map<String, Object>) pollWrapper.get("poll");
+        List<String> allFiles = (List<String>) poll.get("allFiles");
+        assertTrue(allFiles.contains("invoice.edi"));
+
+        List<String> outboxesChecked = (List<String>) poll.get("outboxesChecked");
+        assertEquals(1, outboxesChecked.size());
+
+        List<Map<String, Object>> sentByOutbox = (List<Map<String, Object>>) poll.get("sentByOutbox");
+        assertEquals(1, sentByOutbox.size());
+        assertEquals(Arrays.asList("invoice.edi"), sentByOutbox.get(0).get("files"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void executeReturnsSentWithEmptyFilesWhenPollerFoundFileButProcessingFailed() throws Exception {
+        Session session = mock(Session.class);
+        DirectoryPollingModule poller = mock(DirectoryPollingModule.class);
+        when(poller.getOutboxDir()).thenReturn("/path/to/outbox");
+        // File was found (processing attempted) but processing failed — sent list is empty
+        when(poller.triggerFileNow("invoice.edi")).thenReturn(true);
+        when(poller.getLastPollSentFileNames()).thenReturn(Collections.emptyList());
+        when(poller.getLastPollSentDetails()).thenReturn(Collections.emptyList());
+        when(session.getOutboundPollingModules()).thenReturn(Collections.singletonList(poller));
+
+        TriggerPollCommand command = new TriggerPollCommand();
+        command.init(session, new HashMap<>());
+
+        CommandResult result = command.execute(new Object[]{"trigger", "invoice.edi"});
+
+        // File was found → TYPE_SENT (not TYPE_OK), even though nothing was actually sent
+        assertEquals(CommandResult.TYPE_SENT, result.getType());
+
+        Object lastEntry = result.getResults().get(result.getResults().size() - 1);
+        Map<String, Object> poll = (Map<String, Object>) ((Map<?, ?>) lastEntry).get("poll");
+        List<String> outboxesChecked = (List<String>) poll.get("outboxesChecked");
+        assertEquals(1, outboxesChecked.size()); // outbox was checked
+
+        List<String> allFiles = (List<String>) poll.get("allFiles");
+        assertTrue(allFiles.isEmpty()); // but nothing was sent
+
+        List<?> sentByOutbox = (List<?>) poll.get("sentByOutbox");
+        assertTrue(sentByOutbox.isEmpty()); // sentByOutbox only populated for successful sends
+    }
+
+    @Test
+    public void executeReturnsNotFoundWhenOnlyNonDirectoryPollersExist() throws Exception {
+        Session session = mock(Session.class);
+        PollingModule plainPoller = mock(PollingModule.class);
+        when(session.getOutboundPollingModules()).thenReturn(Collections.singletonList(plainPoller));
+
+        TriggerPollCommand command = new TriggerPollCommand();
+        command.init(session, new HashMap<>());
+
+        CommandResult result = command.execute(new Object[]{"trigger", "invoice.edi"});
+
+        assertEquals(CommandResult.TYPE_NOT_FOUND, result.getType());
+        verifyNoInteractions(plainPoller);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void executeReturnsErrorAndFailureDetailsWhenPartnerReturnsNon2xx() throws Exception {
+        Session session = mock(Session.class);
+        DirectoryPollingModule poller = mock(DirectoryPollingModule.class);
+        when(poller.getOutboxDir()).thenReturn("/path/to/outbox");
+        when(session.getOutboundPollingModules()).thenReturn(Collections.singletonList(poller));
+        when(poller.getLastPollSentFileNames()).thenReturn(Collections.singletonList("invoice.edi"));
+        when(poller.getLastPollSentDetails()).thenReturn(Collections.emptyList());
+
+        Map<String, Object> failedAttempt = new HashMap<>();
+        failedAttempt.put("filename", "invoice.edi");
+        failedAttempt.put("success", false);
+        failedAttempt.put("partnerHttpCode", 500);
+        failedAttempt.put("partnerHttpReason", "Internal Server Error");
+        failedAttempt.put("errorMessage", "Fatal error sending message");
+        when(poller.getLastPollAttemptDetails()).thenReturn(Collections.singletonList(failedAttempt));
+
+        TriggerPollCommand command = new TriggerPollCommand();
+        command.init(session, new HashMap<>());
+
+        CommandResult result = command.execute(new Object[0]);
+
+        assertEquals(CommandResult.TYPE_ERROR, result.getType());
+        Object lastEntry = result.getResults().get(result.getResults().size() - 1);
+        assertTrue(lastEntry instanceof Map);
+        Map<String, Object> pollWrapper = (Map<String, Object>) lastEntry;
+        Map<String, Object> poll = (Map<String, Object>) pollWrapper.get("poll");
+        List<Map<String, Object>> failures = (List<Map<String, Object>>) poll.get("failures");
+        assertEquals(1, failures.size());
+        assertEquals("outbox", failures.get(0).get("outbox"));
+        assertEquals(500, failures.get(0).get("partnerHttpCode"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void executeReturnsErrorWhenPartnerConnectionFailsWithoutHttpCode() throws Exception {
+        Session session = mock(Session.class);
+        DirectoryPollingModule poller = mock(DirectoryPollingModule.class);
+        when(poller.getOutboxDir()).thenReturn("/path/to/outbox");
+        when(session.getOutboundPollingModules()).thenReturn(Collections.singletonList(poller));
+        when(poller.getLastPollSentFileNames()).thenReturn(Collections.emptyList());
+        when(poller.getLastPollSentDetails()).thenReturn(Collections.emptyList());
+
+        Map<String, Object> failedAttempt = new HashMap<>();
+        failedAttempt.put("filename", "invoice.edi");
+        failedAttempt.put("success", false);
+        failedAttempt.put("errorType", "TRANSPORT");
+        failedAttempt.put("errorMessage", "Connection refused");
+        when(poller.getLastPollAttemptDetails()).thenReturn(Collections.singletonList(failedAttempt));
+
+        TriggerPollCommand command = new TriggerPollCommand();
+        command.init(session, new HashMap<>());
+
+        CommandResult result = command.execute(new Object[0]);
+
+        assertEquals(CommandResult.TYPE_ERROR, result.getType());
+        Object lastEntry = result.getResults().get(result.getResults().size() - 1);
+        Map<String, Object> poll = (Map<String, Object>) ((Map<?, ?>) lastEntry).get("poll");
+        List<Map<String, Object>> failures = (List<Map<String, Object>>) poll.get("failures");
+        assertEquals(1, failures.size());
+        assertEquals("TRANSPORT", failures.get(0).get("errorType"));
+        assertEquals("Connection refused", failures.get(0).get("errorMessage"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void executeForFileIgnoresStaleFailureAttemptsFromPriorRequest() throws Exception {
+        Session session = mock(Session.class);
+        DirectoryPollingModule poller = mock(DirectoryPollingModule.class);
+        when(session.getOutboundPollingModules()).thenReturn(Collections.singletonList(poller));
+        when(poller.getOutboxDir()).thenReturn("/path/to/outbox");
+        when(poller.triggerFileNow("invoice.edi")).thenReturn(true);
+        when(poller.getLastPollSentFileNames()).thenReturn(Collections.singletonList("invoice.edi"));
+        when(poller.getLastPollSentDetails()).thenReturn(Collections.emptyList());
+
+        Map<String, Object> staleFailure = new HashMap<>();
+        staleFailure.put("filename", "old.edi");
+        staleFailure.put("success", false);
+        staleFailure.put("errorType", "TRANSPORT");
+        staleFailure.put("errorMessage", "Connection refused");
+
+        Map<String, Object> successAttempt = new HashMap<>();
+        successAttempt.put("filename", "invoice.edi");
+        successAttempt.put("success", true);
+
+        when(poller.getLastPollAttemptDetails())
+                .thenReturn(Collections.singletonList(staleFailure))
+                .thenReturn(Collections.singletonList(successAttempt));
+
+        TriggerPollCommand command = new TriggerPollCommand();
+        command.init(session, new HashMap<>());
+
+        CommandResult first = command.execute(new Object[]{"trigger", "invoice.edi"});
+        assertEquals(CommandResult.TYPE_ERROR, first.getType());
+
+        CommandResult second = command.execute(new Object[]{"trigger", "invoice.edi"});
+        assertEquals(CommandResult.TYPE_SENT, second.getType());
+        Map<String, Object> poll = (Map<String, Object>) ((Map<?, ?>) second.getResults()
+                .get(second.getResults().size() - 1)).get("poll");
+        List<Map<String, Object>> failures = (List<Map<String, Object>>) poll.get("failures");
+        assertTrue(failures.isEmpty());
     }
 }

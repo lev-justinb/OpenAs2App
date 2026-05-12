@@ -43,6 +43,7 @@ public abstract class DirectoryPollingModule extends PollingModule {
     Collection<String> threadProcessedFiles = Collections.synchronizedCollection(new ArrayList<String>());
     private final List<String> lastPollSentFileNames = Collections.synchronizedList(new ArrayList<String>());
     private final List<Map<String, String>> lastPollSentDetails = Collections.synchronizedList(new ArrayList<Map<String, String>>());
+    private final List<Map<String, Object>> lastPollAttemptDetails = Collections.synchronizedList(new ArrayList<Map<String, Object>>());
 
     private String errorDir = null;
     private String sentDir = null;
@@ -124,6 +125,7 @@ public abstract class DirectoryPollingModule extends PollingModule {
         if (clearSentLists) {
             lastPollSentFileNames.clear();
             lastPollSentDetails.clear();
+            lastPollAttemptDetails.clear();
         }
         try {
             // update tracking info. if a file is ready, process it
@@ -316,6 +318,8 @@ public abstract class DirectoryPollingModule extends PollingModule {
         try {
             Message msg = processDocument(file, file.getName());
             lastPollSentFileNames.add(file.getName());
+            Map<String, Object> attempt = new HashMap<>();
+            attempt.put("filename", file.getName());
             if (msg != null && msg.getPartnership() != null) {
                 Map<String, String> detail = new HashMap<>();
                 detail.put("filename", file.getName());
@@ -323,12 +327,37 @@ public abstract class DirectoryPollingModule extends PollingModule {
                 String receiver = msg.getPartnership().getReceiverID(Partnership.PID_AS2);
                 if (sender != null) {
                     detail.put("sender", sender);
+                    attempt.put("sender", sender);
                 }
                 if (receiver != null) {
                     detail.put("receiver", receiver);
+                    attempt.put("receiver", receiver);
                 }
                 lastPollSentDetails.add(detail);
             }
+            Object failureType = msg != null ? msg.getOption(MessageBuilderModule.OPTION_POLL_FAILURE_TYPE) : null;
+            Object partnerHttpCode = msg != null ? msg.getOption(MessageBuilderModule.OPTION_POLL_PARTNER_HTTP_CODE) : null;
+            Object partnerHttpReason = msg != null ? msg.getOption(MessageBuilderModule.OPTION_POLL_PARTNER_HTTP_REASON) : null;
+            Object failureMessage = msg != null ? msg.getOption(MessageBuilderModule.OPTION_POLL_FAILURE_MESSAGE) : null;
+            boolean success = failureType == null;
+            attempt.put("success", success);
+            if (!success) {
+                attempt.put("errorType", failureType.toString());
+                if (partnerHttpCode != null) {
+                    try {
+                        attempt.put("partnerHttpCode", Integer.parseInt(partnerHttpCode.toString()));
+                    } catch (NumberFormatException nfe) {
+                        attempt.put("partnerHttpCode", partnerHttpCode.toString());
+                    }
+                }
+                if (partnerHttpReason != null) {
+                    attempt.put("partnerHttpReason", partnerHttpReason.toString());
+                }
+                if (failureMessage != null) {
+                    attempt.put("errorMessage", failureMessage.toString());
+                }
+            }
+            lastPollAttemptDetails.add(attempt);
         } catch (FileNotFoundException e) {
             // Try to move original file to error dir in case error handling has not done it  for us.
             IOUtil.handleArchive(file, errorDir, false);
@@ -350,6 +379,57 @@ public abstract class DirectoryPollingModule extends PollingModule {
     public List<Map<String, String>> getLastPollSentDetails() {
         synchronized (lastPollSentDetails) {
             return new ArrayList<>(lastPollSentDetails);
+        }
+    }
+
+    /**
+     * Returns attempt outcomes from the last poll, including failures and partner HTTP metadata when available.
+     */
+    public List<Map<String, Object>> getLastPollAttemptDetails() {
+        synchronized (lastPollAttemptDetails) {
+            return new ArrayList<>(lastPollAttemptDetails);
+        }
+    }
+
+    /**
+     * Directly sends a single file from this module's outbox directory without triggering a full poll.
+     * Bypasses extension and filename-regex filters (caller is trusted to supply a valid filename).
+     * Does not reset the polling timer.
+     *
+     * @param filename plain filename (no path components) to send
+     * @return {@code true} if the file was found and processing was attempted;
+     *         {@code false} if the file was not found or the poller was busy
+     * @throws OpenAS2Exception if the resolved path escapes the outbox directory (path traversal),
+     *                          or if the filesystem path cannot be resolved
+     */
+    public boolean triggerFileNow(String filename) throws OpenAS2Exception {
+        try {
+            File outbox = new File(getOutboxDir()).getCanonicalFile();
+            File file = new File(outbox, filename).getCanonicalFile();
+            // Layer 2: canonical path must remain inside the outbox dir
+            if (!file.getPath().startsWith(outbox.getPath() + File.separator)) {
+                throw new OpenAS2Exception("Path traversal detected for filename: " + filename);
+            }
+            if (!file.exists() || !file.isFile()) {
+                return false;
+            }
+            synchronized (this) {
+                if (isBusy()) {
+                    return false;
+                }
+                setBusy(true);
+            }
+            try {
+                lastPollSentFileNames.clear();
+                lastPollSentDetails.clear();
+                lastPollAttemptDetails.clear();
+                processSingleFile(file, file.getAbsolutePath());
+            } finally {
+                setBusy(false);
+            }
+            return true;
+        } catch (IOException e) {
+            throw new OpenAS2Exception("Failed to resolve file path for filename: " + filename, e);
         }
     }
 }
