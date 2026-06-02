@@ -1,11 +1,13 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xmlns="http://maven.apache.org/POM/4.0.0"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<?xml version="1.0" encoding="UTF-8" ?>
+<project
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns="http://maven.apache.org/POM/4.0.0"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+>
     <modelVersion>4.0.0</modelVersion>
     <groupId>net.sf.openas2</groupId>
     <artifactId>OpenAS2</artifactId>
-    <version>4.8.2</version>
+    <version>4.8.2-fork.1</version>
     <name>OpenAS2</name>
     <packaging>pom</packaging>
 
@@ -360,14 +362,14 @@
                             <!-- Checks for Size Violations.                    -->
                             <!-- See http://checkstyle.sf.net/config_sizes.html -->
                             <module name="FileLength">
-                                <property name="max" value="3500"/>
-                                <property name="fileExtensions" value="java"/>
+                                <property name="max" value="3500" />
+                                <property name="fileExtensions" value="java" />
                             </module>
 
                             <!-- Checks for whitespace                               -->
                             <!-- See http://checkstyle.sf.net/config_whitespace.html -->
                             <module name="FileTabCharacter">
-                                <property name="eachLine" value="true"/>
+                                <property name="eachLine" value="true" />
                             </module>
 
                             <module name="TreeWalker">
@@ -375,31 +377,37 @@
                                 <!-- <module name="LineLength">-->
                                 <!--     <property name="max" value="110"/>-->
                                 <!-- </module>-->
-                                <module name="StaticVariableName"/>
+                                <module name="StaticVariableName" />
                                 <module name="TypeName">
-                                    <property name="format" value="^_?[A-Z][a-zA-Z0-9]*$"/>
+                                    <property name="format" value="^_?[A-Z][a-zA-Z0-9]*$" />
                                 </module>
-                                <module name="NoLineWrap"/>
+                                <module name="NoLineWrap" />
                                 <module name="EmptyBlock">
-                                    <property name="option" value="TEXT"/>
-                                    <property name="tokens"
-                                              value="LITERAL_TRY, LITERAL_FINALLY, LITERAL_IF, LITERAL_ELSE, LITERAL_SWITCH"/>
+                                    <property name="option" value="TEXT" />
+                                    <property
+                                        name="tokens"
+                                        value="LITERAL_TRY, LITERAL_FINALLY, LITERAL_IF, LITERAL_ELSE, LITERAL_SWITCH"
+                                    />
                                 </module>
-                                <module name="NeedBraces"/>
-                                <module name="LeftCurly"/>
+                                <module name="NeedBraces" />
+                                <module name="LeftCurly" />
                                 <module name="RightCurly">
-                                    <property name="id" value="RightCurlySame"/>
-                                    <property name="tokens"
-                                              value="LITERAL_TRY, LITERAL_CATCH, LITERAL_FINALLY, LITERAL_IF, LITERAL_ELSE, LITERAL_DO"/>
+                                    <property name="id" value="RightCurlySame" />
+                                    <property
+                                        name="tokens"
+                                        value="LITERAL_TRY, LITERAL_CATCH, LITERAL_FINALLY, LITERAL_IF, LITERAL_ELSE, LITERAL_DO"
+                                    />
                                 </module>
                                 <module name="RightCurly">
-                                    <property name="id" value="RightCurlyAlone"/>
-                                    <property name="option" value="alone"/>
-                                    <property name="tokens"
-                                              value="CLASS_DEF, METHOD_DEF, CTOR_DEF, LITERAL_FOR, LITERAL_WHILE, STATIC_INIT, INSTANCE_INIT"/>
+                                    <property name="id" value="RightCurlyAlone" />
+                                    <property name="option" value="alone" />
+                                    <property
+                                        name="tokens"
+                                        value="CLASS_DEF, METHOD_DEF, CTOR_DEF, LITERAL_FOR, LITERAL_WHILE, STATIC_INIT, INSTANCE_INIT"
+                                    />
                                 </module>
                                 <module name="AvoidNestedBlocks">
-                                    <property name="allowInSwitchCase" value="true"/>
+                                    <property name="allowInSwitchCase" value="true" />
                                 </module>
                             </module>
                         </module>
@@ -415,8 +423,10 @@
 	                <effort>Max</effort>
 	                <threshold>medium</threshold>
 	                <failOnError>true</failOnError>
-	                <includeFilterFile>${session.executionRootDirectory}/spotbugs-security-include.xml</includeFilterFile>
-	                <excludeFilterFile>${session.executionRootDirectory}/spotbugs-security-exclude.xml</excludeFilterFile>
+	                <includeFilterFile
+                    >${session.executionRootDirectory}/spotbugs-security-include.xml</includeFilterFile>
+	                <excludeFilterFile
+                    >${session.executionRootDirectory}/spotbugs-security-exclude.xml</excludeFilterFile>
 	                <plugins>
 	                    <plugin>
 	                        <groupId>com.h3xstream.findsecbugs</groupId>

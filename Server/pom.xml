@@ -1,13 +1,15 @@
-<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xmlns="http://maven.apache.org/POM/4.0.0"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns="http://maven.apache.org/POM/4.0.0"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+>
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
         <!-- DO NOT CHANGE THIS "groupId" WITHOUT CHANGING XMLSession.getManifestAttributes.MANIFEST_VENDOR_ID_ATTRIB -->
         <groupId>net.sf.openas2</groupId>
         <artifactId>OpenAS2</artifactId>
-        <version>4.8.2</version>
+        <version>4.8.2-fork.1</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
@@ -21,7 +23,8 @@
 
     <properties>
         <mainClass>org.openas2.app.OpenAS2Server</mainClass>
-        <project.dist.package.name>${project.parent.artifactId}Server-${project.version}.zip</project.dist.package.name>
+        <project.dist.package.name
+        >${project.parent.artifactId}Server-${project.version}.zip</project.dist.package.name>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <help.file.src>${project.basedir}/../docs/OpenAS2HowTo.pdf</help.file.src>
         <project.license>${project.basedir}/../LICENSE.txt</project.license>
@@ -80,13 +83,12 @@
                             <target>
                                 <!-- Update the test certificates on every test run to ensure they are not expired -->
 								<exec executable="sh" osfamily="unix">
-								    <arg value="-c"/>
-								    <arg line="${project.basedir}/src/bin/create_test_certificates.sh"/>
+								    <arg value="-c" />
+								    <arg line="${project.basedir}/src/bin/create_test_certificates.sh" />
 								</exec>
                                 <!-- Copy the installer config files to test resources to ensure we test the default config -->
-                                <copy todir="${project.basedir}/src/test/resources/config"
-                                      verbose="true">
-                                    <fileset dir="${project.basedir}/src/config"/>
+                                <copy todir="${project.basedir}/src/test/resources/config" verbose="true">
+                                    <fileset dir="${project.basedir}/src/config" />
                                 </copy>
                             </target>
                         </configuration>
@@ -99,53 +101,72 @@
                         <phase>package</phase>
                         <configuration>
                             <target>
-                               <copy todir="${package.assembly.dir}/bin"
-                                      verbose="true">
-                                    <fileset dir="${project.basedir}/src/bin"/>
+                               <copy todir="${package.assembly.dir}/bin" verbose="true">
+                                    <fileset dir="${project.basedir}/src/bin" />
                                 </copy>
-                                <echo message="OS Name: ${os.name}"/>
+                                <echo message="OS Name: ${os.name}" />
 								<exec executable="sh" osfamily="unix">
-								    <arg value="-c"/>
-								    <arg line="'chmod uga+x ${package.assembly.dir}/bin/*.sh'"/>
+								    <arg value="-c" />
+								    <arg line="'chmod uga+x ${package.assembly.dir}/bin/*.sh'" />
 								</exec>
 								<!--Copy config directory to assembly directory -->
-                                <copy todir="${package.assembly.dir}/config"
-                                      verbose="true">
-                                    <fileset dir="${project.basedir}/src/config"/>
+                                <copy todir="${package.assembly.dir}/config" verbose="true">
+                                    <fileset dir="${project.basedir}/src/config" />
                                 </copy>
                                 <!--Copy resources directory to assembly directory -->
-                                <copy todir="${package.assembly.dir}/resources"
-                                      verbose="true">
-                                    <fileset dir="${project.basedir}/src/resources"/>
+                                <copy todir="${package.assembly.dir}/resources" verbose="true">
+                                    <fileset dir="${project.basedir}/src/resources" />
                                 </copy>
                                 <!--Copy artifact to build lib directory -->
                                 <copy
                                     file="${project.build.directory}/${project.build.finalName}.jar"
-                                    todir="${package.assembly.dir}/lib" verbose="true"/>
+                                    todir="${package.assembly.dir}/lib"
+                                    verbose="true"
+                                />
                                 <!-- Add the help PDF version to the distro -->
-                                <copy file="${help.file.src}"
-                                      todir="${package.assembly.dir}" verbose="true"/>
+                                <copy
+                                    file="${help.file.src}"
+                                    todir="${package.assembly.dir}"
+                                    verbose="true"
+                                />
                                 <!-- Add the release notes files -->
-                                <copy file="${release.notes}"
-                                      todir="${package.assembly.dir}" verbose="true"/>
-                                <copy file="${release.history}"
-                                      todir="${package.assembly.dir}" verbose="true"/>
-                                <copy file="${project.license}"
-                                      todir="${package.assembly.dir}" verbose="true"/>
+                                <copy
+                                    file="${release.notes}"
+                                    todir="${package.assembly.dir}"
+                                    verbose="true"
+                                />
+                                <copy
+                                    file="${release.history}"
+                                    todir="${package.assembly.dir}"
+                                    verbose="true"
+                                />
+                                <copy
+                                    file="${project.license}"
+                                    todir="${package.assembly.dir}"
+                                    verbose="true"
+                                />
                                 <!-- create distribution package
                                     basedir="${package.assembly.dir}"
                                 -->
                                 <!--
                                     Pre-delete the package otherwise it keeps old files in it
                                 -->
- 							    <delete file="${project.basedir}/dist/${project.dist.package.name}"/>
+ 							    <delete file="${project.basedir}/dist/${project.dist.package.name}" />
                                 <zip
                                     destfile="${project.basedir}/dist/${project.dist.package.name}"
-                                    update="true">
-                                        <zipfileset dir="${package.assembly.dir}" encoding="UTF-8"
-                                                 includes="**/*.sh" filemode="755"/>
-                                        <zipfileset dir="${package.assembly.dir}" encoding="UTF-8"
-                                                 excludes="**/*.sh"/>
+                                    update="true"
+                                >
+                                        <zipfileset
+                                        dir="${package.assembly.dir}"
+                                        encoding="UTF-8"
+                                        includes="**/*.sh"
+                                        filemode="755"
+                                    />
+                                        <zipfileset
+                                        dir="${package.assembly.dir}"
+                                        encoding="UTF-8"
+                                        excludes="**/*.sh"
+                                    />
 
                                 </zip>
                             </target>
