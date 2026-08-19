@@ -1,20 +1,22 @@
 #              OpenAS2 Server
-#              Version 4.8.2
+#              Version 4.9.1
 #              RELEASE NOTES
 -----
-The OpenAS2 project is pleased to announce the release of OpenAS2 4.8.2
+The OpenAS2 project is pleased to announce the release of OpenAS2 4.9.0
 
-The release download file is: OpenAS2Server-4.8.2.zip
+The release download file is: OpenAS2Server-4.9.0.zip
 
 The zip file contains a PDF document (OpenAS2HowTo.pdf) providing information on installing and using the application.
 ## NOTE: Testing covers Java 11 to 21.
 ##       Java 8 is NO LONGER SUPPORTED.
 
-Version 4.8.2 - 2026-04-10
-=======
+Version 4.10.0 - 2026-08-17
+===========================
 
-This is a bugfix release.
-1.  When an SSL exception occurs connecting to a partner, the file is soptred in the sent directory instead of error directory.
+This is a minor enhancement  release
+1. Remove support for anything below Java 17 necessitated by dependent Java packages,
+2. Do not cause server to stop when duplicate partnership is detected. Instead log error and ignore the duplicate.
+
 
 ## Upgrade Notes
  See the openAS2HowTo appendix for the general process on upgrading OpenAS2.
